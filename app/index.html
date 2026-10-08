@@ -223,6 +223,15 @@ tr:last-child td{border-bottom:0}
 .pwform{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px;align-items:end}
 .pwform input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
 .pwform .row{grid-column:1 / -1}
+/* phone lookup */
+.lookup{position:relative}
+.lookup input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 14px;width:min(240px,60vw)}
+.lookres{position:absolute;inset-inline-start:0;top:calc(100% + 6px);z-index:40;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(20,10,40,.18);min-width:min(320px,88vw);padding:6px;display:grid;gap:2px}
+.lookres button{background:none;border:0;border-radius:8px;padding:8px 10px;text-align:start;display:grid;gap:1px}
+.lookres button:hover,.lookres button:focus-visible{background:var(--sunk)}
+.lookres .ph{font-family:var(--f-num);direction:ltr;text-align:end;font-size:13px;color:var(--muted)}
+.lookres .none{padding:8px 10px;color:var(--muted);font-size:14px}
+.dupe{font-size:13.5px;background:var(--sun-soft);border-radius:8px;padding:6px 10px;grid-column:1 / -1}
 /* clients */
 select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
 input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 10px;width:100%}
@@ -273,6 +282,7 @@ input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);backgro
       <div><h1>עוזר שיחת מכירה</h1><small>Power Click · התאמת חבילה בזמן אמת <span id="meName" class="mepill" hidden></span></small></div>
     </div>
     <div class="row">
+      <div class="lookup"><input type="search" id="phoneFind" inputmode="tel" placeholder="חיפוש לקוח לפי טלפון" aria-label="חיפוש לקוח לפי טלפון" autocomplete="off"><div class="lookres" id="phoneRes" hidden></div></div>
       <button class="duepill" id="duePill" type="button" hidden></button>
       <button class="btn" id="toClients" type="button">לקוחות</button>
       <button class="btn primary" id="newCall" type="button">שיחה חדשה</button>
@@ -298,6 +308,7 @@ input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);backgro
         <label class="f">עסק / תחום<input type="text" id="cBiz" placeholder="למשל: מספרה בחולון"></label>
         <label class="f">טלפון<input type="tel" id="cPhone" placeholder="050-0000000" dir="ltr"></label>
         <label class="f">סטטוס<select id="cStatus"></select></label>
+        <div class="dupe" id="phoneDupe" hidden></div>
       </div>
       <div id="questions"></div>
       <label class="f" style="margin-top:8px">מידע קבוע על הלקוח<textarea id="notes" placeholder="מה העסק עושה, מה הכאב, מה חשוב לו, מי מקבל החלטות..."></textarea></label>
@@ -778,7 +789,7 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab
 const bind=(id,key)=>{ const e=document.getElementById(id); e.value=S[key]||''; e.oninput=()=>{ S[key]=e.value; S.example=false; save(); renderSummary(); fillScriptNames(); }; };
 function bindAll(){ bind('cName','name'); bind('cBiz','biz'); bind('notes','notes'); bind('cPhone','phone'); bind('cFollow','followUp'); bind('cLog','logDraft'); renderPrevLog();
   const st=document.getElementById('cStatus'); st.value=S.status||'new'; st.onchange=()=>{ S.status=st.value; save(); };
-  setSaveMsg(); }
+  setSaveMsg(); renderPhoneDupe(); }
 
 function save(){ store.set(S); }
 
@@ -878,7 +889,7 @@ async function initClients(){
   dbState='on';
   CCOL.orderBy('updatedAt','desc').onSnapshot(snap=>{
     CLIENTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    renderClients(); setSaveMsg(); renderPrevLog();
+    renderClients(); setSaveMsg(); renderPrevLog(); renderPhoneDupe();
   }, err=>{ dbState='err'; renderClients(); setSaveMsg('לא הצלחתי לטעון את רשימת הלקוחות. רענני את הדף.', 'err'); });
 }
 
@@ -907,6 +918,35 @@ async function saveClient(){
   }finally{ btn.disabled=false; }
 }
 document.getElementById('saveClient').onclick=saveClient;
+
+// compare phones by digits only: "+972 50-123 4567", "050 1234567" and "0501234567" are the same number
+const phoneDigits = v => { let d=String(v||'').replace(/\D/g,''); if(d.startsWith('972')) d='0'+d.slice(3); return d; };
+const phoneMatch = (c, q) => { const qd=phoneDigits(q); return qd.length>=3 && phoneDigits(c.phone).includes(qd); };
+
+function renderPhoneFind(){
+  const inp=document.getElementById('phoneFind'), box=document.getElementById('phoneRes');
+  const q=inp.value.trim();
+  if(!q){ box.hidden=true; return; }
+  const digits=phoneDigits(q);
+  const hits=CLIENTS.filter(c=> digits.length>=3 ? phoneMatch(c,q) : `${c.name} ${c.biz}`.toLowerCase().includes(q.toLowerCase())).slice(0,8);
+  box.innerHTML = hits.length ? hits.map(c=>`<button type="button" data-find="${c.id}"><b>${esc(c.name||'ללא שם')}${c.biz?' · '+esc(c.biz):''}</b><span class="ph">${esc(c.phone||'')}</span><span style="font-size:12.5px;color:var(--muted)">${STATUS[c.status]||''}${c.pkgName?' · '+esc(c.pkgName):''}</span></button>`).join('')
+    : `<div class="none">${digits.length>=3?'אין לקוח עם המספר הזה. אפשר להתחיל שיחה חדשה ולשמור אותו.':'מקלידים לפחות 3 ספרות'}</div>`;
+  box.hidden=false;
+  box.querySelectorAll('[data-find]').forEach(b=>b.onclick=()=>{ openClient(b.dataset.find); inp.value=''; box.hidden=true; });
+}
+function renderPhoneDupe(){
+  const el=document.getElementById('phoneDupe'); if(!el) return;
+  const ph=phoneDigits(document.getElementById('cPhone').value);
+  const other = ph.length>=9 && CLIENTS.find(c=>c.id!==S.clientId && phoneDigits(c.phone)===ph);
+  if(!other){ el.hidden=true; return; }
+  el.innerHTML=`המספר הזה כבר שמור אצל <b>${esc(other.name||'לקוח')}</b>. <button class="linkbtn" type="button" id="openDupe">לפתוח את הלקוח הקיים</button>`;
+  el.hidden=false;
+  document.getElementById('openDupe').onclick=()=>openClient(other.id);
+}
+document.getElementById('phoneFind').addEventListener('input', renderPhoneFind);
+document.getElementById('phoneFind').addEventListener('keydown', e=>{ if(e.key==='Escape'){ e.target.value=''; renderPhoneFind(); } if(e.key==='Enter'){ const f=document.querySelector('#phoneRes [data-find]'); if(f) f.click(); } });
+document.addEventListener('click', e=>{ if(!e.target.closest('.lookup')) document.getElementById('phoneRes').hidden=true; });
+document.getElementById('cPhone').addEventListener('input', renderPhoneDupe);
 
 function openClient(id){
   const c=CLIENTS.find(x=>x.id===id); if(!c) return;
@@ -941,7 +981,7 @@ function renderClients(){
     if(CFILTER==='open' && (c.status==='won'||c.status==='lost')) return false;
     if(CFILTER==='won' && c.status!=='won') return false;
     if(CFILTER==='lost' && c.status!=='lost') return false;
-    if(q && !`${c.name} ${c.biz} ${c.phone}`.toLowerCase().includes(q)) return false;
+    if(q && !`${c.name} ${c.biz} ${c.phone}`.toLowerCase().includes(q) && !phoneMatch(c,q)) return false;
     return true;
   }).sort((x,y)=> rank(x)-rank(y) || (rank(x)<3 ? new Date(x.followUp)-new Date(y.followUp) : (y.updatedAt||0)-(x.updatedAt||0)));
 
