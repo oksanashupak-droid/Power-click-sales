@@ -21,6 +21,22 @@ export default async function handler(req, res) {
       return res.status(200).json({ clients });
     }
 
+    // bulk create (Excel import): { items: [{ id, data }] }, up to 500 per request
+    if (req.method === 'POST') {
+      const items = (req.body || {}).items;
+      if (!Array.isArray(items) || !items.length || items.length > 500) return res.status(400).json({ code: 'invalid_argument' });
+      const args = [];
+      for (const it of items) {
+        if (!it || !ID.test(String(it.id)) || !it.data || typeof it.data !== 'object' || Array.isArray(it.data)) return res.status(400).json({ code: 'invalid_argument' });
+        const { id: _drop, ...data } = it.data;
+        const json = JSON.stringify(data);
+        if (Buffer.byteLength(json) > MAX_BYTES) return res.status(413).json({ code: 'too_large' });
+        args.push(String(it.id), json);
+      }
+      await redis('HSET', key, ...args);
+      return res.status(200).json({ ok: true, count: items.length });
+    }
+
     const id = String(req.query.id || '');
     if (!ID.test(id)) return res.status(400).json({ code: 'invalid_argument' });
 

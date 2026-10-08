@@ -271,7 +271,9 @@ input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);backgro
 .btn.danger{color:var(--warn)}
 .spill{display:inline-block;font-size:12px;font-weight:800;border-radius:999px;padding:1px 9px;background:var(--brand-soft);color:var(--brand)}
 .spill.won{background:var(--good);color:#fff}
-.spill.lost{background:var(--sunk);color:var(--muted)}
+.spill.lost,.spill.invalid{background:var(--sunk);color:var(--muted)}
+.spill.meeting{background:var(--good);color:#fff}
+.spill.noanswer{background:var(--sunk);color:var(--ink)}
 .spill.followup{background:var(--sun);color:var(--sun-ink)}
 .cl details{grid-column:1 / -1;font-size:13.5px}
 .cl details summary{cursor:pointer;color:var(--brand);font-weight:700}
@@ -353,7 +355,10 @@ input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);backgro
       <div class="ctools">
         <div class="chips" id="cFilter" role="group" aria-label="סינון"></div>
         <input type="text" id="cSearch" placeholder="חיפוש לפי שם, עסק או טלפון">
+        <button class="btn" type="button" id="importBtn">ייבוא מאקסל</button>
+        <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden>
       </div>
+      <div class="card" id="importBox" hidden style="margin-bottom:12px;display:grid;gap:8px"></div>
       <div class="clist" id="cList"><div class="cempty">טוען לקוחות...</div></div>
     </div>
 
@@ -804,12 +809,14 @@ function bindAll(){ bind('cName','name'); bind('cBiz','biz'); bind('notes','note
 function save(){ store.set(S); }
 
 /* ---------- clients (db) ---------- */
-const STATUS = {new:'שיחה ראשונה', followup:'לחזור אליו', offer:'נשלחה הצעה', won:'נסגר', lost:'לא רלוונטי'};
-let DB = null, CCOL = null, ME = '', CLIENTS = [], CFILTER = 'all', CQUERY = '', dbState = 'loading';
+const STATUS = {new:'שיחה ראשונה', noanswer:'לא עונה', followup:'לחזור אליו', meeting:'נקבעה פגישה', offer:'נשלחה הצעה', won:'נסגר', lost:'לא מעוניין', invalid:'מספר לא תקין'};
+const CLOSED = new Set(['won','lost','invalid']);
+let SHOWN = 100;
+let DB = null, CCOL = null, ME = '', CLIENTS = [], CFILTER = 'open', CQUERY = '', dbState = 'loading';
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 const dayKey = d => d.toISOString ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : '';
 function fuState(c){
-  if(!c.followUp || c.status==='won' || c.status==='lost') return '';
+  if(!c.followUp || CLOSED.has(c.status)) return '';
   const d = new Date(c.followUp); if(isNaN(d)) return '';
   const now = new Date();
   if(d < now) return 'late';
@@ -970,13 +977,13 @@ function dailyStats(){
   const days={};
   const day=k=>days[k]||(days[k]={calls:new Set(),newC:0,won:0,wonSum:0,notes:0});
   for(const c of CLIENTS){
-    if(c.createdAt) day(dayKey(new Date(c.createdAt))).newC++;
+    if(c.createdAt && !c.imported) day(dayKey(new Date(c.createdAt))).newC++;
     let prev='';
     for(const e of (c.log||[])){
       const k=dayKey(new Date(e.at));
       if(e.kind==='call' || !e.kind) day(k).calls.add(c.id);
       if(e.kind==='note') day(k).notes++;
-      if(e.status==='won' && prev!=='won'){ day(k).won++; day(k).wonSum+=c.price||0; }
+      if(e.status==='won' && prev!=='won' && e.kind!=='import'){ day(k).won++; day(k).wonSum+=c.price||0; }
       prev=e.status;
     }
   }
@@ -1015,18 +1022,21 @@ function renderClients(){
   const won=CLIENTS.filter(c=>c.status==='won');
   document.getElementById('cStats').innerHTML = `<span><b>${CLIENTS.length}</b> לקוחות</span><span><b>${due}</b> לחזור היום ובאיחור</span><span><b>${won.length}</b> נסגרו</span><span><b>${fmt(won.reduce((t,c)=>t+(c.price||0),0))} ₪</b> במכירות שנסגרו</span>`;
 
-  const F={all:'הכל',due:'לחזור',open:'פתוחים',won:'נסגרו',lost:'לא רלוונטי'};
+  const F={open:'פתוחים',due:'לחזור',meeting:'פגישות',won:'נסגרו',lost:'לא רלוונטי',all:'הכל'};
+  const fcount={open:CLIENTS.filter(c=>!CLOSED.has(c.status)).length, due:CLIENTS.filter(c=>fuState(c)).length, meeting:CLIENTS.filter(c=>c.status==='meeting').length,
+    won:CLIENTS.filter(c=>c.status==='won').length, lost:CLIENTS.filter(c=>c.status==='lost'||c.status==='invalid').length, all:CLIENTS.length};
   const fb=document.getElementById('cFilter');
-  fb.innerHTML=Object.entries(F).map(([k,v])=>`<button class="chip" type="button" aria-pressed="${CFILTER===k}" data-f="${k}">${v}</button>`).join('');
-  fb.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ CFILTER=b.dataset.f; renderClients(); });
+  fb.innerHTML=Object.entries(F).map(([k,v])=>`<button class="chip" type="button" aria-pressed="${CFILTER===k}" data-f="${k}">${v} <span class="num" style="opacity:.7">${fcount[k]}</span></button>`).join('');
+  fb.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ CFILTER=b.dataset.f; SHOWN=100; renderClients(); });
 
   const q=CQUERY.trim().toLowerCase();
   const rank=c=>({late:0,today:1,later:2}[fuState(c)] ?? 3);
   let rows=CLIENTS.filter(c=>{
     if(CFILTER==='due' && !fuState(c)) return false;
-    if(CFILTER==='open' && (c.status==='won'||c.status==='lost')) return false;
+    if(CFILTER==='open' && CLOSED.has(c.status)) return false;
+    if(CFILTER==='meeting' && c.status!=='meeting') return false;
     if(CFILTER==='won' && c.status!=='won') return false;
-    if(CFILTER==='lost' && c.status!=='lost') return false;
+    if(CFILTER==='lost' && c.status!=='lost' && c.status!=='invalid') return false;
     if(q && !`${c.name} ${c.biz} ${c.phone}`.toLowerCase().includes(q) && !phoneMatch(c,q)) return false;
     return true;
   }).sort((x,y)=> rank(x)-rank(y) || (rank(x)<3 ? new Date(x.followUp)-new Date(y.followUp) : (y.updatedAt||0)-(x.updatedAt||0)));
@@ -1034,6 +1044,7 @@ function renderClients(){
   if(!CLIENTS.length){ list.innerHTML='<div class="cempty">עוד אין לקוחות שמורים. אחרי שיחה לוחצים "שמירה בלקוחות", והלקוח יופיע כאן עם החבילה, ההערות ומועד החזרה.</div>'; return; }
   if(!rows.length){ list.innerHTML='<div class="cempty">אין לקוחות שמתאימים לסינון הזה.</div>'; return; }
 
+  const total=rows.length; rows=rows.slice(0,SHOWN);
   list.innerHTML=rows.map(c=>{
     const fs=fuState(c);
     const fuTxt = c.followUp && fs ? `<span class="fu ${fs==='late'?'late':''}">${fs==='late'?'באיחור: ':fs==='today'?'היום: ':'לחזור: '}${fmtDT(c.followUp)}</span>` : '';
@@ -1055,7 +1066,8 @@ function renderClients(){
         return (last.length?`<div class="logs">${logHTML(last,true)}</div>`:'') + ((c.log||[]).length>last.length?`<details><summary>כל התיעוד וההיסטוריה (${(c.log||[]).length})</summary><div class="logs" style="margin-top:6px">${logHTML(c.log||[])}</div></details>`:''); })()}
       <div class="qadd"><textarea id="qa-${c.id}" placeholder="הוספת תיעוד ללקוח הזה..."></textarea><button class="btn" type="button" data-qadd="${c.id}">הוספה</button></div>
     </div>`;
-  }).join('');
+  }).join('') + (total>rows.length ? `<button class="btn" type="button" id="showMore" style="justify-self:center">הצגת עוד ${Math.min(100,total-rows.length)} (מתוך ${total})</button>` : '');
+  const more=document.getElementById('showMore'); if(more) more.onclick=()=>{ SHOWN+=100; renderClients(); };
 
   list.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openClient(b.dataset.open));
   list.querySelectorAll('[data-qadd]').forEach(b=>b.onclick=async()=>{
@@ -1088,8 +1100,79 @@ pwForm.addEventListener('submit', async e=>{
   try{ await api('POST','/api/password',{current:cur,next:nx}); pwForm.reset(); pwMsg.textContent='הסיסמה הוחלפה'; pwMsg.className='savemsg ok'; setTimeout(()=>{ pwForm.hidden=true; pwMsg.textContent=''; },1800); }
   catch(err){ pwMsg.textContent = err.code==='bad_password' ? 'הסיסמה הנוכחית לא נכונה' : 'לא הצלחתי להחליף. נסי שוב.'; pwMsg.className='savemsg err'; }
 });
+/* ---------- import from Excel ---------- */
+const IMPORT_STATUS = [[/נסגר|סגר|לקוח/,'won'],[/לא מעוניין|לא רלוונט|לא רוצה/,'lost'],[/לא תקין|שגוי|מנותק/,'invalid'],[/לא עונה|אין מענה/,'noanswer'],[/פגישה/,'meeting'],[/הצעת מחיר|הצעה/,'offer'],[/לחזור|חזרה/,'followup'],[/חדש/,'new']];
+const mapStatus = t => { t=String(t||''); for(const [re,k] of IMPORT_STATUS) if(re.test(t)) return k; return 'new'; };
+let PENDING_IMPORT = null;
+function loadSheetJS(){
+  if(window.XLSX) return Promise.resolve();
+  return new Promise((ok,fail)=>{ const sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload=ok; sc.onerror=fail; document.head.appendChild(sc); });
+}
+function parseRows(rows){
+  const hi = rows.findIndex(r=>r && r.some(v=>/טלפון|נייד|phone/i.test(String(v||''))));
+  if(hi<0) throw new Error('no_phone_col');
+  const head = rows[hi].map(v=>String(v||''));
+  const col = re => head.findIndex(h=>re.test(h));
+  const cName=col(/שם|name/i), cPhone=col(/טלפון|נייד|phone/i), cBiz=col(/תחום|עיסוק|עסק|business/i), cStatus=col(/סטטוס|status/i), cNotes=col(/הערות|notes/i);
+  const known = new Set(CLIENTS.map(c=>phoneDigits(c.phone)).filter(Boolean));
+  const seen = new Set(); const items=[]; let dupes=0;
+  for(const r of rows.slice(hi+1)){
+    if(!r) continue;
+    const phone=String(r[cPhone]??'').trim(), name=cName>=0?String(r[cName]??'').trim():'';
+    if(!phone && !name) continue;
+    const d=phoneDigits(phone);
+    if(d && (known.has(d)||seen.has(d))){ dupes++; continue; }
+    if(d) seen.add(d);
+    items.push({name, phone, biz:cBiz>=0?String(r[cBiz]??'').trim():'', rawStatus:cStatus>=0?String(r[cStatus]??'').trim():'', notes:cNotes>=0?String(r[cNotes]??'').trim():''});
+  }
+  return {items, dupes};
+}
+function showImport(html){ const b=document.getElementById('importBox'); b.innerHTML=html; b.hidden=false; }
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  showImport('קוראת את הקובץ...');
+  try{
+    await loadSheetJS();
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''});
+    const {items,dupes}=parseRows(rows);
+    PENDING_IMPORT=items;
+    const by={}; items.forEach(it=>{ const k=mapStatus(it.rawStatus); by[k]=(by[k]||0)+1; });
+    showImport(`<b>נמצאו ${fmt(items.length)} לקוחות חדשים בקובץ "${esc(f.name)}"</b>
+      <div style="font-size:14px;color:var(--muted)">${Object.entries(by).map(([k,n])=>`${STATUS[k]}: ${fmt(n)}`).join(' · ')}${dupes?` · ${fmt(dupes)} כבר קיימים (לפי טלפון) ולא ייובאו שוב`:''}</div>
+      <div class="row"><button class="btn sun" type="button" id="doImport" ${items.length?'':'disabled'}>ייבוא ${fmt(items.length)} לקוחות לרשימה של ${esc(ME)}</button><button class="btn" type="button" id="cancelImport">ביטול</button><span class="savemsg" id="importMsg"></span></div>`);
+    document.getElementById('cancelImport').onclick=()=>{ PENDING_IMPORT=null; document.getElementById('importBox').hidden=true; };
+    document.getElementById('doImport').onclick=runImport;
+  }catch(err){
+    showImport(err && err.message==='no_phone_col' ? 'לא מצאתי בקובץ עמודה של טלפון. צריכה להיות כותרת "טלפון" או "מספר טלפון".' : 'לא הצלחתי לקרוא את הקובץ. בדקי שזה קובץ אקסל או CSV ונסי שוב.');
+  }
+};
+async function runImport(){
+  const items=PENDING_IMPORT; if(!items||!items.length) return;
+  const btn=document.getElementById('doImport'), msg=document.getElementById('importMsg'); btn.disabled=true;
+  const now=Date.now(); let done=0;
+  const newId=()=> (crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'') : Date.now().toString(36)+Math.random().toString(36).slice(2)).slice(0,24);
+  try{
+    for(let i=0;i<items.length;i+=250){
+      const chunk=items.slice(i,i+250).map(it=>{
+        const st=mapStatus(it.rawStatus);
+        const text=['יובא מאקסל'+(it.rawStatus?` · סטטוס בקובץ: ${it.rawStatus}`:''), it.notes].filter(Boolean).join('\n');
+        return {id:newId(), data:{name:it.name, biz:it.biz, phone:it.phone, status:st, followUp:'', notes:it.notes||'', a:{}, pkg:'', pkgName:'', price:0, monthly:false,
+          imported:true, createdAt:now, updatedAt:now-i, log:[{at:now, kind:'import', status:st, pkg:'', followUp:'', text}]}};
+      });
+      await api('POST','/api/clients',{items:chunk});
+      done+=chunk.length; msg.textContent=`יובאו ${fmt(done)} מתוך ${fmt(items.length)}...`;
+    }
+    PENDING_IMPORT=null; msg.textContent=''; await CCOL.refresh();
+    showImport(`<b style="color:var(--good)">יובאו ${fmt(done)} לקוחות.</b> <button class="linkbtn" type="button" onclick="document.getElementById('importBox').hidden=true">סגירה</button>`);
+  }catch(err){
+    msg.textContent=`הייבוא נעצר אחרי ${fmt(done)} לקוחות. אפשר לייבא את אותו קובץ שוב, ומי שכבר נכנס לא ייובא פעמיים.`; msg.className='savemsg err'; btn.disabled=false;
+    PENDING_IMPORT=items.slice(done); CCOL.refresh();
+  }
+}
 document.getElementById('logout').onclick=async()=>{ try{ await fetch('/api/logout',{method:'POST'}); }catch(e){} location.reload(); };
-document.getElementById('cSearch').oninput=e=>{ CQUERY=e.target.value; renderClients(); };
+document.getElementById('cSearch').oninput=e=>{ CQUERY=e.target.value; SHOWN=100; renderClients(); };
 document.getElementById('toClients').onclick=document.getElementById('duePill').onclick=()=>{ showTab('clients'); document.querySelector('.tabs').scrollIntoView({behavior:'smooth',block:'start'}); };
 setInterval(()=>{ if(CLIENTS.length && !document.getElementById('cList').contains(document.activeElement) && !document.querySelector('#cList details[open]') && ![...document.querySelectorAll('.qadd textarea')].some(t=>t.value.trim())) renderClients(); }, 60000);
 document.getElementById('newCall').onclick=()=>{ S={a:{},name:'',biz:'',notes:'',phone:'',status:'new',followUp:'',logDraft:'',clientId:null,pick:null,example:false}; save(); bindAll(); renderQuestions(); renderRec(); window.scrollTo({top:0,behavior:'smooth'}); };
