@@ -219,6 +219,10 @@ tr:last-child td{border-bottom:0}
   .mbar b{font-family:var(--f-display);font-weight:400;font-size:18px}
   .mbar span{font-family:var(--f-num);font-weight:700}
 }
+/* change password */
+.pwform{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px;align-items:end}
+.pwform input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+.pwform .row{grid-column:1 / -1}
 /* clients */
 select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
 input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 10px;width:100%}
@@ -272,9 +276,17 @@ input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);backgro
       <button class="duepill" id="duePill" type="button" hidden></button>
       <button class="btn" id="toClients" type="button">לקוחות</button>
       <button class="btn primary" id="newCall" type="button">שיחה חדשה</button>
+      <button class="btn" id="pwBtn" type="button">שינוי סיסמה</button>
       <button class="btn" id="logout" type="button">יציאה</button>
     </div>
   </header>
+
+  <form class="card pwform" id="pwForm" hidden>
+    <label class="f">הסיסמה הנוכחית<input type="password" id="pwCur" autocomplete="current-password" required></label>
+    <label class="f">סיסמה חדשה (לפחות 6 תווים)<input type="password" id="pwNew" autocomplete="new-password" required></label>
+    <label class="f">שוב את הסיסמה החדשה<input type="password" id="pwNew2" autocomplete="new-password" required></label>
+    <div class="row"><button class="btn sun" type="submit">שמירה</button><button class="btn" type="button" id="pwCancel">ביטול</button><span class="savemsg" id="pwMsg"></span></div>
+  </form>
 
   <div class="example" id="exampleNote" hidden>זו שיחה לדוגמה, כדי לראות איך זה עובד. לוחצים "שיחה חדשה" ומתחילים לסמן תוך כדי שיחה.</div>
 
@@ -979,6 +991,17 @@ function renderClients(){
     try{ await CCOL.doc(b.dataset.del).delete(); if(S.clientId===b.dataset.del){ S.clientId=null; save(); setSaveMsg(); } }catch(e){ b.textContent='המחיקה נכשלה'; }
   });
 }
+const pwForm=document.getElementById('pwForm'), pwMsg=document.getElementById('pwMsg');
+document.getElementById('pwBtn').onclick=()=>{ pwForm.hidden=!pwForm.hidden; pwMsg.textContent=''; if(!pwForm.hidden) document.getElementById('pwCur').focus(); };
+document.getElementById('pwCancel').onclick=()=>{ pwForm.hidden=true; pwForm.reset(); };
+pwForm.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const cur=document.getElementById('pwCur').value, nx=document.getElementById('pwNew').value;
+  if(nx.length<6){ pwMsg.textContent='הסיסמה החדשה צריכה להיות לפחות 6 תווים'; pwMsg.className='savemsg err'; return; }
+  if(nx!==document.getElementById('pwNew2').value){ pwMsg.textContent='הסיסמאות החדשות לא זהות'; pwMsg.className='savemsg err'; return; }
+  try{ await api('POST','/api/password',{current:cur,next:nx}); pwForm.reset(); pwMsg.textContent='הסיסמה הוחלפה'; pwMsg.className='savemsg ok'; setTimeout(()=>{ pwForm.hidden=true; pwMsg.textContent=''; },1800); }
+  catch(err){ pwMsg.textContent = err.code==='bad_password' ? 'הסיסמה הנוכחית לא נכונה' : 'לא הצלחתי להחליף. נסי שוב.'; pwMsg.className='savemsg err'; }
+});
 document.getElementById('logout').onclick=async()=>{ try{ await fetch('/api/logout',{method:'POST'}); }catch(e){} location.reload(); };
 document.getElementById('cSearch').oninput=e=>{ CQUERY=e.target.value; renderClients(); };
 document.getElementById('toClients').onclick=document.getElementById('duePill').onclick=()=>{ showTab('clients'); document.querySelector('.tabs').scrollIntoView({behavior:'smooth',block:'start'}); };

@@ -31,6 +31,7 @@ input[type=password]{font:inherit;color:var(--ink);background:var(--bg);border:1
 input[type=password]:focus-visible,button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:11px;background:var(--sun);color:#231600;cursor:pointer}
 button:disabled{opacity:.6}
+.first{margin:0;background:#FFF4C7;color:#231600;border-radius:10px;padding:10px 12px;font-size:14px;font-weight:600}
 .err{color:var(--warn);font-weight:700;font-size:14px;min-height:1.2em;margin:0}
 </style>
 </head>
@@ -41,21 +42,44 @@ button:disabled{opacity:.6}
     <label><input type="radio" name="user" value="oksana" id="u-oksana" checked>אוקסנה</label>
     <label><input type="radio" name="user" value="stas" id="u-stas">סטס</label>
   </div>
-  <label class="f">סיסמה<input type="password" id="pw" autocomplete="current-password" required></label>
+  <p class="first" id="firstNote" hidden>כניסה ראשונה: בחרו סיסמה משלכם (לפחות 6 תווים). מהפעם הבאה נכנסים איתה.</p>
+  <label class="f"><span id="pwLabel">סיסמה</span><input type="password" id="pw" autocomplete="current-password" required></label>
+  <label class="f" id="pw2Wrap" hidden>שוב את אותה סיסמה<input type="password" id="pw2" autocomplete="new-password"></label>
   <button type="submit" id="go">כניסה</button>
   <p class="err" id="err" role="alert"></p>
 </form>
 <script>
-try{ const last=localStorage.getItem('pc-last-user'); if(last){ const r=document.getElementById('u-'+last); if(r) r.checked=true; } }catch(e){}
-document.getElementById('pw').focus();
-document.getElementById('f').addEventListener('submit', async (e)=>{
+let STATUS=null;
+const $=id=>document.getElementById(id);
+const selected=()=>document.querySelector('input[name=user]:checked').value;
+function mode(){
+  const setup = STATUS && STATUS.users[selected()] && !STATUS.users[selected()].hasPassword;
+  $('firstNote').hidden=!setup; $('pw2Wrap').hidden=!setup; $('pw2').required=!!setup;
+  $('pwLabel').textContent = setup ? 'סיסמה חדשה' : 'סיסמה';
+  $('pw').autocomplete = setup ? 'new-password' : 'current-password';
+  $('go').textContent = setup ? 'שמירת הסיסמה וכניסה' : 'כניסה';
+  $('err').textContent='';
+}
+try{ const last=localStorage.getItem('pc-last-user'); if(last){ const r=$('u-'+last); if(r) r.checked=true; } }catch(e){}
+document.querySelectorAll('input[name=user]').forEach(r=>r.addEventListener('change',()=>{ mode(); $('pw').focus(); }));
+fetch('/api/status').then(r=>r.ok?r.json():Promise.reject(r.status)).then(j=>{ STATUS=j; mode(); })
+  .catch(()=>{ $('err').textContent='המערכת עוד לא מחוברת למסד הנתונים. צריך להשלים את ההגדרה ב-Vercel.'; });
+$('pw').focus();
+$('f').addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const user=document.querySelector('input[name=user]:checked').value, btn=document.getElementById('go'), err=document.getElementById('err');
+  const user=selected(), btn=$('go'), err=$('err'), pw=$('pw').value;
+  const setup = STATUS && !STATUS.users[user].hasPassword;
+  if(setup){
+    if(pw.length<6){ err.textContent='הסיסמה צריכה להיות לפחות 6 תווים.'; return; }
+    if(pw!==$('pw2').value){ err.textContent='שתי הסיסמאות לא זהות. הקלידו שוב.'; return; }
+  }
   btn.disabled=true; err.textContent='';
   try{
-    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user,password:document.getElementById('pw').value})});
+    const r=await fetch(setup?'/api/setup':'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user,password:pw})});
     if(r.ok){ try{ localStorage.setItem('pc-last-user',user); }catch(e){} location.reload(); return; }
-    err.textContent = r.status===401 ? 'הסיסמה לא נכונה. נסו שוב.' : 'הכניסה לא הצליחה. נסו שוב בעוד רגע.';
+    const j=await r.json().catch(()=>({}));
+    if(j.code==='needs_setup'||j.code==='already_set'){ STATUS.users[user].hasPassword = j.code==='already_set'; mode(); err.textContent = j.code==='already_set' ? 'כבר נבחרה סיסמה למשתמש הזה. הקלידו אותה כדי להיכנס.' : ''; }
+    else err.textContent = r.status===401 ? 'הסיסמה לא נכונה. נסו שוב.' : 'הכניסה לא הצליחה. נסו שוב בעוד רגע.';
   }catch(e){ err.textContent='אין חיבור לאינטרנט. נסו שוב.'; }
   btn.disabled=false;
 });

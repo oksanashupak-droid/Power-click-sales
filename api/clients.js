@@ -7,11 +7,11 @@ const MAX_BYTES = 250_000;
 // Each user's clients live in their own Redis hash: clients:<user> -> { <id>: JSON }
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  const user = getUser(req);
-  if (!user) return res.status(401).json({ code: 'unauth' });
-  const key = `clients:${user}`;
-
   try {
+    const user = await getUser(req);
+    if (!user) return res.status(401).json({ code: 'unauth' });
+    const key = `clients:${user}`;
+
     if (req.method === 'GET') {
       const flat = (await redis('HGETALL', key)) || [];
       const clients = [];
