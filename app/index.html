@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Power Click עוזר שיחה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Rubik:wght@500;700&family=Secular+One&display=swap">
+<style>
+/* Layout: call cockpit — questions on the right (RTL start), sticky live recommendation on the left, reference tabs below. */
+:root{
+  --bg:#F4F2F8; --surface:#FFFFFF; --sunk:#ECE8F3; --line:#DDD6EA;
+  --ink:#1D1430; --muted:#6A6182;
+  --brand:#3B1A73; --brand-ink:#FFFFFF; --brand-soft:#E9E1F8;
+  --sun:#F4C61B; --sun-ink:#231600; --sun-soft:#FFF4C7;
+  --good:#1D7A4E; --warn:#A35A00;
+  --f-display:"Secular One","Assistant",system-ui,sans-serif;
+  --f-body:"Assistant",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --f-num:"Rubik","Assistant",system-ui,sans-serif;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#130C20; --surface:#1D1530; --sunk:#261C3D; --line:#352A50;
+  --ink:#EFEAF8; --muted:#A79EBD;
+  --brand:#B89BFF; --brand-ink:#170D2B; --brand-soft:#2C2148;
+  --sun:#F6CD2E; --sun-ink:#231600; --sun-soft:#3A3014;
+  --good:#5DD39E; --warn:#F2B35C; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#130C20; --surface:#1D1530; --sunk:#261C3D; --line:#352A50;
+  --ink:#EFEAF8; --muted:#A79EBD;
+  --brand:#B89BFF; --brand-ink:#170D2B; --brand-soft:#2C2148;
+  --sun:#F6CD2E; --sun-ink:#231600; --sun-soft:#3A3014;
+  --good:#5DD39E; --warn:#F2B35C; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{direction:rtl}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;padding-inline:16px;padding-block:0 96px}
+.shell{max-width:1520px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+.wrap{min-width:0}
+/* all-packages rail */
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:18px}
+.rail h2{font-size:18px;margin-bottom:2px}
+.rail .hint{font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.secband{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-radius:10px;padding:8px 12px;margin:14px 0 6px;font-family:var(--f-display);font-size:17px}
+.secband small{font-family:var(--f-body);font-size:12px;font-weight:700;opacity:.85}
+.secband.soc{background:var(--brand);color:var(--brand-ink)}
+.secband.vid{background:var(--sun);color:var(--sun-ink)}
+.catsec{border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:22px;background:var(--surface)}
+.catsec>.secband{margin-top:0;font-size:22px;padding:12px 16px}
+.catsec .cgrid{margin-bottom:16px}
+.fampick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fampick button{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 10px;text-align:start;display:grid;gap:1px;font-size:13px}
+.fampick button b{font-size:14.5px}
+.fampick button .num{font-weight:700}
+.fampick button.on{border-color:var(--brand);background:var(--brand-soft)}
+.fampick .k{font-size:11.5px;font-weight:800;letter-spacing:.04em;color:var(--muted)}
+.logbox{display:grid;gap:6px;margin-top:10px}
+.logbox .prev{max-height:220px;overflow:auto;display:grid;gap:6px}
+.lentry{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:14px;white-space:pre-wrap}
+.lentry .when{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px;white-space:normal}
+.lentry.sys{background:none;padding:2px 10px;font-size:12.5px;color:var(--muted)}
+.qadd{grid-column:1 / -1;display:flex;gap:8px;align-items:flex-start}
+.qadd textarea{min-height:44px;flex:1}
+.cl .logs{grid-column:1 / -1;display:grid;gap:6px}
+.rail h3{font-family:var(--f-body);font-weight:800;font-size:12.5px;letter-spacing:.05em;color:var(--muted);margin:12px 0 4px}
+.ri{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;width:100%;text-align:start;background:none;border:1px solid transparent;border-radius:9px;padding:7px 8px}
+.ri:hover{background:var(--sunk)}
+.ri.on{background:var(--brand-soft);border-color:var(--brand)}
+.ri .rn{font-weight:700;font-size:14.5px;min-width:0}
+.ri .rp{font-family:var(--f-num);font-weight:700;font-size:14.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ri .rs{grid-column:1 / -1;font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.ri .rs b{color:var(--good);font-weight:700}
+.ri .tag{font-size:11px;font-weight:800;background:var(--sun);color:var(--sun-ink);border-radius:999px;padding:0 6px;margin-inline-start:4px}
+.railbtn,.railclose{display:none}
+.scrim{display:none}
+@media (max-width:1199px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(340px,88vw);max-height:none;margin:0;border-radius:0;z-index:30;transform:translateX(-105%);transition:transform .2s;padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+  body.rail-open .rail{transform:none}
+  body.rail-open .scrim{display:block;position:fixed;inset:0;background:rgba(10,5,20,.45);z-index:25}
+  .railbtn{display:block;position:fixed;inset-inline-end:0;top:40%;z-index:20;writing-mode:vertical-rl;background:var(--sun);color:var(--sun-ink);border:0;border-radius:0 10px 10px 0;padding:14px 8px;font-weight:800;font-size:14px}
+  .railclose{display:inline-block;float:left;background:none;border:0;font-size:22px;line-height:1;color:var(--muted)}
+}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;text-wrap:balance;margin:0;line-height:1.2}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:18px 14px}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:34px;height:34px;border-radius:9px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-family:var(--f-display);font-size:20px;position:relative}
+.mark::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;background:var(--sun);bottom:4px;left:4px}
+.brand h1{font-size:22px}
+.mepill{display:inline-block;margin-inline-start:6px;background:var(--brand-soft);color:var(--brand);border-radius:999px;padding:0 8px;font-weight:700}
+.brand small{display:block;color:var(--muted);font-size:13px;font-family:var(--f-body)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 16px;font-weight:700}
+.btn:hover{border-color:var(--brand)}
+.btn.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.btn.sun{background:var(--sun);color:var(--sun-ink);border-color:var(--sun)}
+.example{background:var(--sun-soft);border:1px dashed var(--sun);border-radius:var(--r);padding:8px 14px;font-size:14px;margin-bottom:14px}
+
+/* grid */
+.cockpit{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:880px){.cockpit{grid-template-columns:minmax(0,1fr)}}
+
+/* questions */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.client{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+@media (max-width:520px){.client{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:600}
+input[type=text],textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+textarea{min-height:70px;resize:vertical}
+.q{padding-block:14px;border-top:1px solid var(--line);display:grid;gap:8px}
+.q:first-of-type{border-top:0}
+.qh{display:flex;gap:8px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.qh b{font-size:16px}
+.say{font-size:13.5px;color:var(--muted)}
+.say::before{content:"לשאול: ";font-weight:700;color:var(--brand)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 13px;font-size:14.5px;font-weight:600;transition:background .12s,border-color .12s}
+.chip:hover{border-color:var(--brand)}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.qn{font-family:var(--f-num);font-size:12px;color:var(--muted)}
+
+/* recommendation */
+.rec{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:grid;gap:12px}
+.hero{background:var(--brand);color:var(--brand-ink);border-radius:16px;padding:20px;display:grid;gap:10px}
+.hero .eyebrow{font-size:12.5px;letter-spacing:.06em;font-weight:700;opacity:.85}
+.hero h2{font-size:30px}
+.hero .fam{display:inline-block;background:var(--sun);color:var(--sun-ink);border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:800;justify-self:start}
+.price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.price .big{font-family:var(--f-num);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums}
+.price .unit{font-size:14px;opacity:.9}
+.sub{font-size:13.5px;opacity:.9}
+.p4{background:rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;font-size:14px}
+:root[data-theme="dark"] .p4{background:rgba(0,0,0,.12)}
+.items{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:14.5px}
+.items li{display:flex;gap:8px}
+.items li::before{content:"✓";color:var(--sun);font-weight:800}
+.pitch{background:var(--sun-soft);border-inline-start:4px solid var(--sun);border-radius:10px;padding:12px 14px}
+.pitch .lbl{font-size:12px;font-weight:800;letter-spacing:.05em;color:var(--warn);margin-bottom:4px}
+.pitch p{margin:0;font-size:16px;font-weight:600}
+.why ul{margin:6px 0 0;padding-inline-start:18px;font-size:14.5px;display:grid;gap:3px}
+.minihead{font-size:12.5px;font-weight:800;letter-spacing:.05em;color:var(--muted)}
+.rank{display:grid;gap:6px;margin-top:6px}
+.rrow{display:grid;grid-template-columns:minmax(0,9rem) 1fr auto;gap:8px;align-items:center;font-size:14px;background:none;border:0;padding:2px 0;text-align:start}
+.rrow:hover .rname{text-decoration:underline}
+.rname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.bar{height:8px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand);border-radius:99px}
+.rrow.on .bar i{background:var(--sun)}
+.moves{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){.moves{grid-template-columns:1fr}}
+.move{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--surface);text-align:start;display:grid;gap:3px}
+.move:hover{border-color:var(--brand)}
+.move .k{font-size:12px;font-weight:800;color:var(--muted)}
+.move .k.up{color:var(--good)}
+.close p{margin:4px 0 0;font-size:15px}
+.override{font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.linkbtn{background:none;border:0;padding:0;color:var(--brand);font-weight:700;text-decoration:underline}
+.empty{color:var(--muted);text-align:center;padding:24px}
+
+/* tabs */
+.tabs{margin-top:28px}
+.tablist{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;font-weight:700;color:var(--muted)}
+.tab[aria-selected="true"]{color:var(--ink);border-color:var(--sun)}
+.steps{display:grid;gap:12px;counter-reset:s}
+.step{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start}
+.step .n{width:44px;height:44px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-family:var(--f-num);font-weight:700;font-size:18px}
+.step h3{font-size:19px;margin-bottom:4px}
+.step p{margin:0 0 6px}
+.quote{background:var(--sunk);border-radius:10px;padding:8px 12px;margin:6px 0;font-weight:600}
+.tips{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:16px}
+.tip{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.tip b{display:block;margin-bottom:2px}
+details.obj{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:8px}
+details.obj summary{padding:12px 14px;font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:8px}
+details.obj summary::-webkit-details-marker{display:none}
+details.obj summary::after{content:"+";color:var(--brand);font-family:var(--f-num)}
+details.obj[open] summary::after{content:"–"}
+details.obj .body{padding:0 14px 14px;display:grid;gap:6px}
+details.obj .body p{margin:0}
+.catalog h3{font-size:20px;margin:6px 0 10px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:22px}
+.pk{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:8px;align-content:start}
+.pk.flag{border-color:var(--sun);box-shadow:0 0 0 1px var(--sun)}
+.pk .hd{display:flex;justify-content:space-between;gap:8px;align-items:start}
+.pk h4{margin:0;font-family:var(--f-display);font-weight:400;font-size:18px}
+.badge{font-size:11.5px;font-weight:800;background:var(--sun);color:var(--sun-ink);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.pk .pr{font-family:var(--f-num);font-weight:700;font-size:20px}
+.pk .pr small{font-family:var(--f-body);font-weight:600;font-size:13px;color:var(--muted)}
+.pk ul{margin:0;padding-inline-start:18px;font-size:14px;color:var(--ink)}
+.pv{background:var(--sun);color:var(--sun-ink);border-radius:8px;padding:5px 12px;font-weight:800;font-size:15px;justify-self:start}
+.pv small{font-weight:600;font-size:12.5px}
+.pk .unitp{font-size:13px;color:var(--good);font-weight:700}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:14.5px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:start}
+th{font-size:13px;color:var(--muted)}
+td.num{white-space:nowrap}
+tr:last-child td{border-bottom:0}
+
+/* summary */
+.sumbox{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14.5px;max-height:240px;overflow:auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toast{font-size:13px;color:var(--good);font-weight:700}
+
+/* mobile bar */
+.mbar{display:none}
+@media (max-width:880px){
+  .rec{position:static}
+  .mbar{display:flex;position:fixed;inset-inline:0;bottom:0;z-index:10;background:var(--brand);color:var(--brand-ink);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));gap:10px;align-items:center;justify-content:space-between;border:0;width:100%;text-align:start}
+  .mbar b{font-family:var(--f-display);font-weight:400;font-size:18px}
+  .mbar span{font-family:var(--f-num);font-weight:700}
+}
+/* clients */
+select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 10px;width:100%}
+.savebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.savemsg{font-size:13.5px;color:var(--muted)}
+.savemsg.ok{color:var(--good);font-weight:700}
+.savemsg.err{color:var(--warn);font-weight:700}
+.duepill{border:0;border-radius:999px;padding:8px 14px;font-weight:800;background:var(--sun);color:var(--sun-ink)}
+.duepill.late{background:var(--warn);color:#fff}
+.tab .cnt{font-family:var(--f-num);font-size:12px;background:var(--sun);color:var(--sun-ink);border-radius:999px;padding:0 7px;margin-inline-start:4px}
+.ctools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.ctools input{max-width:260px}
+.cstats{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-bottom:10px}
+.cstats b{font-family:var(--f-num);color:var(--ink);font-size:16px}
+.clist{display:grid;gap:10px}
+.cl{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px}
+.cl.late{border-inline-start:5px solid var(--warn)}
+.cl.today{border-inline-start:5px solid var(--sun)}
+.cl h4{margin:0;font-size:17px;font-family:var(--f-display);font-weight:400}
+.cl .meta{font-size:13.5px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.cl .meta .ph{font-family:var(--f-num);color:var(--ink);user-select:all;direction:ltr}
+.cl .fu{font-size:14px;font-weight:700}
+.cl .fu.late{color:var(--warn)}
+.cl .note{grid-column:1 / -1;font-size:14px;white-space:pre-wrap;background:var(--bg);border-radius:8px;padding:8px 10px}
+.cl .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:start;justify-content:end}
+.cl .acts select{width:auto;padding:5px 8px;font-size:14px}
+.cl .acts .btn{padding:5px 12px;font-size:14px}
+.btn.danger{color:var(--warn)}
+.spill{display:inline-block;font-size:12px;font-weight:800;border-radius:999px;padding:1px 9px;background:var(--brand-soft);color:var(--brand)}
+.spill.won{background:var(--good);color:#fff}
+.spill.lost{background:var(--sunk);color:var(--muted)}
+.spill.followup{background:var(--sun);color:var(--sun-ink)}
+.cl details{grid-column:1 / -1;font-size:13.5px}
+.cl details summary{cursor:pointer;color:var(--brand);font-weight:700}
+.cl details ol{margin:6px 0 0;padding-inline-start:18px;display:grid;gap:3px}
+.cempty{text-align:center;color:var(--muted);padding:28px;background:var(--surface);border:1px dashed var(--line);border-radius:var(--r)}
+@media (max-width:560px){.cl{grid-template-columns:minmax(0,1fr)}.cl .acts{justify-content:start}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="shell">
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">P</div>
+      <div><h1>עוזר שיחת מכירה</h1><small>Power Click · התאמת חבילה בזמן אמת <span id="meName" class="mepill" hidden></span></small></div>
+    </div>
+    <div class="row">
+      <button class="duepill" id="duePill" type="button" hidden></button>
+      <button class="btn" id="toClients" type="button">לקוחות</button>
+      <button class="btn primary" id="newCall" type="button">שיחה חדשה</button>
+      <button class="btn" id="logout" type="button">יציאה</button>
+    </div>
+  </header>
+
+  <div class="example" id="exampleNote" hidden>זו שיחה לדוגמה, כדי לראות איך זה עובד. לוחצים "שיחה חדשה" ומתחילים לסמן תוך כדי שיחה.</div>
+
+  <main class="cockpit">
+    <section class="card" aria-labelledby="qTitle">
+      <h2 id="qTitle" style="font-size:20px;margin-bottom:12px">בירור צרכים</h2>
+      <div class="client">
+        <label class="f">שם הלקוח<input type="text" id="cName" placeholder="למשל: דני"></label>
+        <label class="f">עסק / תחום<input type="text" id="cBiz" placeholder="למשל: מספרה בחולון"></label>
+        <label class="f">טלפון<input type="tel" id="cPhone" placeholder="050-0000000" dir="ltr"></label>
+        <label class="f">סטטוס<select id="cStatus"></select></label>
+      </div>
+      <div id="questions"></div>
+      <label class="f" style="margin-top:8px">מידע קבוע על הלקוח<textarea id="notes" placeholder="מה העסק עושה, מה הכאב, מה חשוב לו, מי מקבל החלטות..."></textarea></label>
+      <div class="logbox">
+        <label class="f">התיעוד שלי מהשיחה הזו<textarea id="cLog" style="min-height:110px" placeholder="מה נאמר, מה הוא שאל, מה סיכמנו, מה ההרגשה שלי... נשמר עם תאריך ושעה כשלוחצים &quot;שמירה בלקוחות&quot;."></textarea></label>
+        <div id="prevLog"></div>
+      </div>
+      <div class="client" style="margin-top:10px">
+        <label class="f">מתי לחזור אליו<input type="datetime-local" id="cFollow"></label>
+      </div>
+      <div class="savebar">
+        <button class="btn sun" id="saveClient" type="button">שמירה בלקוחות</button>
+        <span class="savemsg" id="saveMsg">השיחה עוד לא נשמרה</span>
+      </div>
+    </section>
+
+    <aside class="rec" id="rec" aria-live="polite"></aside>
+  </main>
+
+  <section class="tabs">
+    <div class="tablist" role="tablist">
+      <button class="tab" role="tab" data-tab="clients" type="button">לקוחות<span class="cnt" id="tabCnt" hidden></span></button>
+      <button class="tab" role="tab" data-tab="script" type="button">תסריט שיחה</button>
+      <button class="tab" role="tab" data-tab="obj" type="button">התנגדויות</button>
+      <button class="tab" role="tab" data-tab="catalog" type="button">כל החבילות</button>
+      <button class="tab" role="tab" data-tab="terms" type="button">תנאים ותוספות</button>
+      <button class="tab" role="tab" data-tab="summary" type="button">סיכום ללקוח</button>
+    </div>
+
+    <div class="panel" data-panel="clients">
+      <div class="cstats" id="cStats"></div>
+      <div class="ctools">
+        <div class="chips" id="cFilter" role="group" aria-label="סינון"></div>
+        <input type="text" id="cSearch" placeholder="חיפוש לפי שם, עסק או טלפון">
+      </div>
+      <div class="clist" id="cList"><div class="cempty">טוען לקוחות...</div></div>
+    </div>
+
+    <div class="panel" data-panel="script">
+      <div class="steps">
+        <div class="step"><div class="n">1</div><div>
+          <h3>פתיחה (30 שניות)</h3>
+          <p>חום, סיבה לשיחה, ובקשת רשות לשאול.</p>
+          <div class="quote">"היי <span class="nm">[שם]</span>, כאן <span class="me">[השם שלך]</span> מ-Power Click. אנחנו מפיקים סרטוני AI ומנהלים קמפיינים לעסקים. יש לך 5 דקות? אני רוצה להבין מה העסק צריך, ואז להגיד לך בדיוק מה מתאים, בלי לשלוח לך מחירון של 10 עמודים."</div>
+        </div></div>
+        <div class="step"><div class="n">2</div><div>
+          <h3>בירור צרכים</h3>
+          <p>עוברים על השאלות למעלה. הוא מדבר 70% מהזמן. כשהוא מזכיר כאב, שואלים "ומה זה עושה לעסק?" ורושמים בהערות.</p>
+          <div class="quote">"מה הכי חשוב לך שיקרה בשלושה החודשים הקרובים?"</div>
+        </div></div>
+        <div class="step"><div class="n">3</div><div>
+          <h3>הצגת המלצה אחת</h3>
+          <p>מציגים את החבילה מהפאנל, מחברים כל רכיב למשהו שהוא אמר ("אמרת ש... לכן..."). אומרים מחיר בביטחון ושותקים.</p>
+          <div class="quote">"לפי מה שסיפרת, הכי נכון לך <span class="pk-now">[חבילה]</span>. זה <span class="pr-now">[מחיר]</span>. איך זה נשמע לך?"</div>
+        </div></div>
+        <div class="step"><div class="n">4</div><div>
+          <h3>התנגדויות</h3>
+          <p>קודם מסכימים ("מבינה לגמרי"), אחר כך שאלה שמבררת מה באמת עוצר, ורק אז תשובה. התשובות המוכנות בלשונית "התנגדויות".</p>
+        </div></div>
+        <div class="step"><div class="n">5</div><div>
+          <h3>סגירה</h3>
+          <p>בחירה בין שתי אפשרויות, לא "כן או לא".</p>
+          <div class="quote">"מה מתאים לך יותר: <span class="pk-now">[חבילה]</span> או <span class="pk-alt">[חלופה]</span>?"</div>
+        </div></div>
+        <div class="step"><div class="n">6</div><div>
+          <h3>אחרי ה"כן"</h3>
+          <p>אוספים מיד: שם מלא / שם העסק, ח.פ / ע.מ, טלפון, דוא"ל. שולחים הסכם לחתימה ותשלום מראש (העברה, אשראי, ביט). קובעים מועד לשיחת אפיון.</p>
+          <div class="quote">"מעולה! אני שולחת לך עכשיו את ההסכם בוואטסאפ. אחרי החתימה והתשלום נקבע שיחת אפיון ומתחילים לכתוב תסריטים."</div>
+        </div></div>
+      </div>
+      <div class="tips">
+        <div class="tip"><b>מקסימום שתי אפשרויות</b>הצגה של כל 11 החבילות משתקת. המלצה אחת וחלופה אחת.</div>
+        <div class="tip"><b>שתיקה אחרי מחיר</b>אומרים את המחיר ומחכים. הראשון שמדבר אחרי המחיר בדרך כלל מוותר.</div>
+        <div class="tip"><b>מחיר ליחידה</b>"875 ₪ לסרטון" נשמע אחרת מ-"3,500 ₪". בפאנל מופיע המחיר ליחידה.</div>
+        <div class="tip"><b>"הוא רק בודק"</b>לא מסיימים בלי מועד חזרה קבוע ביומן: יום ושעה.</div>
+      </div>
+    </div>
+
+    <div class="panel" data-panel="obj" id="objections"></div>
+    <div class="panel catalog" data-panel="catalog" id="catalog"></div>
+
+    <div class="panel" data-panel="terms">
+      <div class="tips" style="margin-top:0">
+        <div class="tip"><b>זמני אספקה</b>עד 7 ימי עסקים לסרטון, מרגע קבלת כל החומרים ואישור התסריט.</div>
+        <div class="tip"><b>תיקונים</b>עד 3 סבבי תיקונים לסרטון: טקסט, כתוביות, מוזיקה, צבעים, אפקטים בסיסיים. שינוי רעיון או מסר מרכזי אחרי אישור תסריט = הפקה חדשה.</div>
+        <div class="tip"><b>תשלום</b>מראש, לפני תחילת העבודה. המחירים לא כוללים מע"מ. העברה בנקאית, אשראי או ביט. בניהול סושיאל: תשלום בתחילת כל חודש.</div>
+        <div class="tip"><b>תקציב פרסום</b>משולם ישירות לפלטפורמות ולא כלול במחיר החבילה.</div>
+        <div class="tip"><b>ביטולים</b>אין ביטול או החזר אחרי תחילת העבודה או אישור תסריטים. עיכוב חומרים מעל 30 יום מהלקוח: העבודה מוקפאת בלי החזר.</div>
+        <div class="tip"><b>תוצאות</b>שירות מקצועי, בלי התחייבות למספר לידים או מכירות. לא להבטיח מספרים בשיחה.</div>
+        <div class="tip"><b>מסלול 4 חודשים</b>15% הנחה בכל חבילות ניהול הסושיאל. במסלול התחייבות אי אפשר להפסיק באמצע.</div>
+        <div class="tip"><b>זכויות</b>זכויות השימוש בתוצרים הסופיים עוברות ללקוח אחרי תשלום מלא.</div>
+      </div>
+      <h3 style="font-size:20px;margin:22px 0 10px">תוספות</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>תוספת</th><th>מחיר</th><th>כולל מע"מ</th></tr></thead>
+        <tbody id="addons"></tbody>
+      </table></div>
+    </div>
+
+    <div class="panel" data-panel="summary">
+      <p style="margin-top:0">הודעה מוכנה לשלוח ללקוח בוואטסאפ אחרי השיחה. מתעדכנת לפי החבילה שבפאנל.</p>
+      <div class="sumbox" id="sumText"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sun" id="copySum" type="button">העתקת ההודעה</button>
+        <span class="toast" id="copyToast" hidden>הועתק</span>
+      </div>
+    </div>
+  </section>
+</div>
+<aside class="rail" id="rail" aria-label="כל החבילות">
+  <button class="railclose" id="railClose" type="button" aria-label="סגירה">×</button>
+  <h2>כל החבילות</h2>
+  <div class="hint">מחירים לפני מע"מ. לחיצה מציעה את החבילה.</div>
+  <div id="railList"></div>
+</aside>
+</div>
+<div class="scrim" id="scrim"></div>
+<button class="railbtn" id="railBtn" type="button">כל החבילות</button>
+
+<button class="mbar" id="mbar" type="button" aria-label="קפיצה להמלצה"><b id="mbName"></b><span id="mbPrice"></span></button>
+
+<script>
+/*__SESSION__*/
+const VAT = 0.18;
+const fmt = n => n.toLocaleString('he-IL');
+const withVat = n => Math.round(n * (1 + VAT));
+
+const RET = ['S','CB','CR','PC','FS'];
+const ONE = ['IV1','IV4','IV10','SA1','SA4','SA10'];
+
+const P = {
+  S:{name:'Starter', fam:'ניהול סושיאל · חודשי', price:1500, p4:1275,
+     items:['הקמה, ניהול ואופטימיזציה של קמפיינים ממומנים','פלטפורמה אחת לבחירה: Facebook / Instagram / TikTok / Google'],
+     pitch:'בוא נתחיל נכון: אנחנו מקימים ומנהלים לך קמפיין ממומן בפלטפורמה אחת, עם מעקב ואופטימיזציה שוטפים. אתה מתמקד בעסק, אנחנו בלידים.'},
+  CB:{name:'Campaign + Banners', fam:'ניהול סושיאל · חודשי', price:2000, p4:1700,
+     items:['ניהול קמפיינים בפלטפורמה אחת','4 באנרים בחודש (באנר חדש כל שבוע)','כתיבת תוכן ומסרים','עיצוב הבאנרים והעלאה לקמפיינים'],
+     pitch:'כל שבוע באנר חדש עם מסר שכתבנו בשבילך, ישר לתוך הקמפיין. ככה המודעות לא נשחקות והקהל רואה כל הזמן משהו חדש.'},
+  CR:{name:'Campaign + Reels', fam:'ניהול סושיאל · חודשי', price:2500, p4:2125,
+     items:['ניהול קמפיינים בפלטפורמה אחת','4 סרטוני Reels בחודש (סרטון כל שבוע)','קונספט וכתיבת תוכן','הפקה, עריכה והעלאה'],
+     pitch:'Reel חדש כל שבוע, מהרעיון ועד ההעלאה. וידאו הוא מה שהאלגוריתם הכי אוהב היום, ואנחנו מחברים אותו ישר לקמפיין.'},
+  PC:{name:'Premium Content', fam:'ניהול סושיאל · חודשי', price:3500, p4:2975,
+     items:['כ-2 תכנים חדשים בכל שבוע','4 סרטוני תדמית AI בחודש (עד 30 שניות)','4 באנרים בחודש','קונספטים, מסרים, הפקה, עיצוב והעלאה','ניהול קמפיינים בפלטפורמה אחת'],
+     pitch:'בערך 2 תכנים חדשים כל שבוע: סרטוני תדמית AI ובאנרים, כולל כתיבה, הפקה והעלאה. גם תדמית חזקה וגם קמפיין שעובד.'},
+  FS:{name:'Full Scale Business', fam:'ניהול סושיאל · חודשי', price:6000, p4:5100, flag:'חבילת הדגל',
+     items:['קמפיינים בכל הפלטפורמות: Facebook, Instagram, TikTok, Google','3 תכנים כל שבוע: סרטון ארוך, סרטון קצר ובאנר','כתיבת תוכן וקונספטים','הפקת סרטונים ועריכה','העלאה לטיקטוק וניהול שוטף'],
+     pitch:'זו חבילת הדגל: אנחנו מחלקת השיווק שלך. כל הפלטפורמות, 3 תכנים חדשים כל שבוע וניהול שוטף. אתה לא צריך לחשוב על שיווק בכלל.'},
+  IV1:{name:'סרטון תדמית AI בודד', fam:'חבילת סרטונים · תדמית', price:1000, units:1,
+     items:['סרטון אחד, 30–40 שניות','תסריט, קריינות AI וכתוביות','מוזיקה והתאמת פורמט (9:16 / 16:9)','עד 3 סבבי תיקונים'],
+     pitch:'סרטון תדמית AI אחד, 30–40 שניות, עם תסריט, קריינות, כתוביות ומוזיקה. דרך טובה להתחיל ולראות איך זה נראה אצלך.'},
+  IV4:{name:'4 סרטוני תדמית AI', fam:'חבילת סרטונים · תדמית', price:3500, units:4, flag:'המומלצת', freeMonth:true,
+     items:['4 סרטונים, עד 40 שניות כל אחד','תסריטים, קריינות וכתוביות','אפקטים והתאמה לפלטפורמות','3 תיקונים לסרטון','חודש שיווק ללא עלות ניהול'],
+     pitch:'4 סרטוני תדמית, סרטון לכל שבוע בחודש. יוצא 875 ₪ לסרטון, ובנוסף חודש ניהול קמפיין בלי עלות ניהול.'},
+  IV10:{name:'10 סרטוני תדמית AI', fam:'חבילת סרטונים · תדמית', price:7000, units:10, freeMonth:true,
+     items:['10 סרטונים + אסטרטגיית תוכן','תסריטים מותאמים וקריינות','אפקטים והתאמה מלאה','3 תיקונים לסרטון','חודש שיווק ללא עלות ניהול'],
+     pitch:'10 סרטוני תדמית עם אסטרטגיית תוכן מלאה. 700 ₪ לסרטון, וחודש ניהול קמפיין בלי עלות ניהול. מספיק חומר לשלוט ברשת חודשים.'},
+  SA1:{name:'סרטון מכירתי קצר', fam:'חבילת סרטונים · קצרים', price:500, units:1,
+     items:['סרטון אחד, עד 15 שניות','מוזיקה ואפקטים','התאמה לרילס / טיקטוק','עד 3 תיקונים'],
+     pitch:'סרטון מכירתי קצר, עד 15 שניות, חד וממיר. מצוין כדי לבדוק מודעה אחת.'},
+  SA4:{name:'4 סרטונים מכירתיים', fam:'חבילת סרטונים · קצרים', price:1500, units:4,
+     items:['4 סרטונים, עד 15 שניות','תסריטים שיווקיים וכתוביות','התאמה מלאה','עד 3 תיקונים לסרטון'],
+     pitch:'4 סרטונים קצרים: בודקים כמה מסרים ורואים מה ממיר הכי טוב. 375 ₪ לסרטון.'},
+  SA10:{name:'10 סרטונים מכירתיים', fam:'חבילת סרטונים · קצרים', price:3000, units:10, flag:'המומלצת', freeMonth:true,
+     items:['10 סרטונים, עד 15 שניות','תסריטים שיווקיים וכתוביות','התאמה מלאה','עד 3 תיקונים לסרטון','חודש שיווק ללא עלות ניהול'],
+     pitch:'10 סרטונים קצרים, 300 ₪ לסרטון. יש מספיק חומר להחליף מודעות כל כמה ימים כדי שלא יישחקו, ובנוסף חודש ניהול בלי עלות.'}
+};
+const VIDS = {S:0,CB:0,CR:4,PC:4,FS:8,IV1:1,IV4:4,IV10:10,SA1:1,SA4:4,SA10:10};
+const VNOTE = {CR:'כולל ניהול קמפיין',PC:'כולל גם 4 באנרים וניהול קמפיין',FS:'לפי כ-8 סרטונים בחודש, כולל באנרים וניהול בכל הפלטפורמות'};
+const pv = (k, price) => Math.round(price / VIDS[k]);
+const UP = {S:'CB',CB:'PC',CR:'PC',PC:'FS',IV1:'IV4',IV4:'IV10',SA1:'SA4',SA4:'SA10',SA10:'IV4'};
+const DOWN = {CB:'S',CR:'S',PC:'CR',FS:'PC',IV4:'IV1',IV10:'IV4',SA4:'SA1',SA10:'SA4',IV1:'SA1'};
+
+const Q = [
+  {id:'manage', t:'מי ינהל את הקמפיינים?', say:'"יש לך היום מישהו שמנהל לך פרסום ממומן, או שתרצה שנעשה את זה אנחנו?"',
+   o:[['us','אתם (Power Click)'],['self','הוא / יש לו מישהו'],['unsure','עוד לא יודע']]},
+  {id:'goal', t:'מה המטרה העיקרית?', say:'"מה הכי חשוב לך שיקרה בחודשים הקרובים?"',
+   o:[['leads','לידים ומכירות'],['brand','מיתוג ותדמית'],['presence','נוכחות קבועה ברשתות'],['launch','השקה / אירוע']]},
+  {id:'ads', t:'ניסיון בפרסום ממומן', say:'"פרסמת פעם בממומן? איך היה?"',
+   o:[['never','אף פעם'],['self','מפרסם לבד'],['unhappy','עם ספק, לא מרוצה']]},
+  {id:'content', t:'איזה תוכן חסר לו?', say:'"יש לך תוכן מוכן לפרסום, או שזה בדיוק מה שחסר?"',
+   o:[['video','סרטונים'],['banners','באנרים'],['both','גם וגם'],['has','יש לו תוכן'],['unknown','לא יודע']]},
+  {id:'vtype', t:'איזה סוג סרטון?', say:'"אתה מדמיין סרטון קצר וחד למודעה, או סרטון תדמית שמספר מי אתה?"',
+   o:[['short','קצר למודעה (עד 15 ש\')'],['image','תדמית (30–40 ש\')'],['both','שניהם'],['na','לא רלוונטי']]},
+  {id:'platforms', t:'כמה פלטפורמות?', say:'"איפה הלקוחות שלך נמצאים? פייסבוק, אינסטגרם, טיקטוק, גוגל?"',
+   o:[['one','אחת'],['many','כמה / כולן']]},
+  {id:'budget', t:'תקציב לשירות (לא כולל מדיה)', say:'"כמה אתה מתכנן להשקיע בשיווק בחודש, בערך?"',
+   o:[['low','עד 1,500 ₪'],['mid','1,500–3,000 ₪'],['high','3,000–6,000 ₪'],['top','6,000 ₪ ומעלה'],['none','לא אמר']]},
+  {id:'commit', t:'צורת עבודה', say:'"אתה מחפש פרויקט חד-פעמי או ליווי שוטף?"',
+   o:[['once','חד-פעמי'],['monthly','חודש-חודש'],['4m','פתוח ל-4 חודשים']]},
+  {id:'size', t:'גודל העסק', say:'',
+   o:[['small','קטן / עצמאי'],['mid','בינוני'],['brand','חברה / מותג']]},
+  {id:'urgency', t:'דחיפות', say:'"מתי היית רוצה שזה יעלה לאוויר?"',
+   o:[['now','השבוע'],['month','החודש'],['browse','רק בודק']]}
+];
+
+const EXAMPLE = {a:{manage:'us',goal:'leads',ads:'unhappy',content:'video',vtype:'short',platforms:'one',budget:'mid',commit:'4m',size:'small',urgency:'month'},
+  name:'דני', biz:'מספרה בחולון', notes:'עבד עם פרילנסר, שילם על קמפיין בלי תוכן חדש. רוצה יותר תורים באמצע השבוע.', pick:null, example:true};
+
+const store = {
+  get(){ try{ return JSON.parse(localStorage.getItem('pc-call-'+SESSION_USER.id)||'null'); }catch(e){ return null; } },
+  set(v){ try{ localStorage.setItem('pc-call-'+SESSION_USER.id, JSON.stringify(v)); }catch(e){} },
+  tab(v){ try{ if(v) localStorage.setItem('pc-tab', v); return localStorage.getItem('pc-tab'); }catch(e){ return null; } }
+};
+let S = store.get() || JSON.parse(JSON.stringify(EXAMPLE));
+
+function scoreAll(a){
+  const s = {}, why = {};
+  Object.keys(P).forEach(k=>{ s[k]=0; why[k]=[]; });
+  const add = (ids, pts, reason) => ids.forEach(k=>{ s[k]+=pts; if(reason && pts>0) why[k].push(reason); });
+  const n = Object.keys(a).length;
+  if(!n) return null;
+
+  if(a.manage==='us'){ add(RET,25,'רוצה שננהל לו את הקמפיינים'); add(ONE,-10); }
+  if(a.manage==='self'){ add(RET,-80); add(ONE,25,'מנהל קמפיינים בעצמו, צריך רק תוכן'); }
+
+  if(a.goal==='leads') add(['SA4','SA10','CR','CB','S'],15,'המטרה לידים ומכירות: תוכן חד וממיר לממומן');
+  if(a.goal==='brand') add(['IV1','IV4','IV10','PC'],18,'המטרה מיתוג: סרטוני תדמית מלאים');
+  if(a.goal==='presence') add(['CB','CR','PC','FS','IV10','SA10'],15,'רוצה נוכחות קבועה: תוכן חדש כל שבוע');
+  if(a.goal==='launch') add(['IV1','IV4','SA4','SA1'],15,'השקה או אירוע: פרויקט ממוקד');
+
+  if(a.ads==='never'){ add(['S','CB','CR'],10,'עוד לא פרסם בממומן: כדאי להתחיל פשוט ומסודר'); add(['SA1','IV1'],5); }
+  if(a.ads==='self') add(RET,10,'מפרסם לבד: ניהול מקצועי ישפר את התוצאות');
+  if(a.ads==='unhappy') add(['CR','PC','FS'],12,'לא מרוצה מהספק: צריך אסטרטגיה, תוכן וניהול ביחד');
+
+  if(a.content==='video'){ add(['CR','PC','FS',...ONE],12,'חסרים לו סרטונים'); add(['S','CB'],-15); }
+  if(a.content==='banners'){ add(['CB','PC','FS'],18,'חסרים לו באנרים'); add(ONE,-20); add(['CR'],-5); }
+  if(a.content==='both'){ add(['PC','FS'],20,'צריך גם סרטונים וגם באנרים'); add(['CB','CR'],5); }
+  if(a.content==='has'){ add(['S'],22,'יש לו כבר תוכן, צריך ניהול קמפיין'); add(ONE,-10); }
+  if(a.content==='unknown') add(['PC','CR'],6,'לא בטוח מה צריך: חבילה מאוזנת עם תוכן');
+
+  if(a.vtype==='short') add(['SA1','SA4','SA10','CR','FS'],14,'מעדיף סרטונים קצרים למודעות');
+  if(a.vtype==='image') add(['IV1','IV4','IV10','PC'],14,'רוצה סרטון תדמית מלא');
+  if(a.vtype==='both'){ add(['FS'],15,'רוצה גם סרטון ארוך וגם קצר'); add(['PC'],6); }
+
+  if(a.platforms==='many'){ add(['FS'],30,'רוצה כמה פלטפורמות במקביל'); add(['S','CB','CR','PC'],-5); }
+  if(a.platforms==='one') add(['FS'],-10);
+
+  if(a.commit==='once'){ add(RET,-30); add(ONE,20,'מעדיף פרויקט חד-פעמי בלי התחייבות'); }
+  if(a.commit==='monthly') add(RET,10,'רוצה ליווי שוטף');
+  if(a.commit==='4m') add(RET,18,'פתוח ל-4 חודשים: מקבל 15% הנחה');
+
+  if(a.size==='small'){ add(['S','CB','SA1','SA4','IV1'],6,'עסק קטן: מחיר כניסה נגיש'); add(['FS','IV10'],-8); }
+  if(a.size==='mid') add(['CR','PC','IV4','SA10'],6);
+  if(a.size==='brand') add(['FS','PC','IV10'],12,'חברה או מותג: צריך נפח ומקצועיות');
+
+  const bands = {low:[0,1500],mid:[1500,3000],high:[3000,6000],top:[6000,1e9]};
+  if(bands[a.budget]){
+    const [lo,hi] = bands[a.budget];
+    Object.keys(P).forEach(k=>{
+      const p = (RET.includes(k) && a.commit==='4m') ? P[k].p4 : P[k].price;
+      if(p>=lo && p<=hi){ s[k]+=20; why[k].push('בתוך התקציב שציין'); }
+      else if(p<lo) s[k]+=4;
+      else s[k]-=Math.min(50,(p-hi)/hi*60);
+    });
+  }
+  const ranked = Object.keys(P).sort((x,y)=>s[y]-s[x]);
+  return {s, why, ranked};
+}
+
+function priceBlock(k){
+  const p = P[k], ret = RET.includes(k), use4 = ret && S.a.commit==='4m';
+  const main = use4 ? p.p4 : p.price;
+  return {main, ret, use4};
+}
+
+function el(tag, attrs={}, html=''){ const e=document.createElement(tag); Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); e.innerHTML=html; return e; }
+
+function renderQuestions(){
+  const box = document.getElementById('questions'); box.innerHTML='';
+  Q.forEach((q,i)=>{
+    if(q.id==='vtype' && (S.a.content==='banners' || S.a.content==='has')) return;
+    const d = el('div',{class:'q'});
+    d.innerHTML = `<div class="qh"><b>${q.t}</b><span class="qn">${i+1}/${Q.length}</span></div>${q.say?`<div class="say">${q.say}</div>`:''}`;
+    const c = el('div',{class:'chips',role:'group','aria-label':q.t});
+    q.o.forEach(([v,l])=>{
+      const b = el('button',{class:'chip',type:'button','aria-pressed':String(S.a[q.id]===v)}, l);
+      b.onclick = ()=>{ if(S.a[q.id]===v) delete S.a[q.id]; else S.a[q.id]=v; S.example=false; S.pick=null; save(); renderQuestions(); renderRec(); };
+      c.appendChild(b);
+    });
+    d.appendChild(c); box.appendChild(d);
+  });
+}
+
+let current = null, alt = null;
+function renderRec(){
+  const r = scoreAll(S.a), box = document.getElementById('rec');
+  document.getElementById('exampleNote').hidden = !S.example;
+  if(!r){
+    box.innerHTML = `<div class="card empty"><h2 style="font-size:20px;margin-bottom:6px">ההמלצה תופיע כאן</h2>סמני תשובות בבירור הצרכים. כבר אחרי 2–3 תשובות תקבלי חבילה מומלצת, מה להגיד ואיך לסגור.</div>`;
+    current = alt = null; renderSummary(); renderMbar(); fillScriptNames(); renderRail(); return;
+  }
+  const top = r.ranked[0];
+  current = S.pick || top;
+  alt = r.ranked.find(k=>k!==current);
+  const p = P[current], pb = priceBlock(current);
+  const reasons = (r.why[current]||[]).slice(0,4);
+  const max = Math.max(1, r.s[r.ranked[0]]);
+  let unit;
+  if(!VIDS[current]) unit = `<div class="sub">אין סרטונים בחבילה הזו</div>`;
+  else if(!pb.ret) unit = `<div class="pv"><span class="num">${fmt(pv(current,p.price))} ₪</span> לסרטון${p.units>1?` <small>· חיסכון ${fmt((current.startsWith('IV')?1000:500)*p.units - p.price)} ₪ מול סרטונים בודדים</small>`:''}</div>`;
+  else unit = `<div class="pv"><span class="num">${fmt(pv(current,pb.main))} ₪</span> לסרטון <small>· ${VNOTE[current]}${pb.use4?'':` · ב-4 חודשים: ${fmt(pv(current,p.p4))} ₪`}</small></div>`;
+  const four = pb.ret ? (pb.use4
+      ? `<div class="p4">מסלול 4 חודשים. מחיר רגיל ${fmt(p.price)} ₪ · חיסכון ${fmt((p.price-p.p4)*4)} ₪ ב-4 חודשים</div>`
+      : `<div class="p4">במסלול 4 חודשים: <b class="num">${fmt(p.p4)} ₪</b> לחודש · חיסכון ${fmt((p.price-p.p4)*4)} ₪</div>`) : '';
+  const up = UP[current] && P[UP[current]], down = DOWN[current] && P[DOWN[current]];
+  const upDiff = up ? (priceBlock(UP[current]).main - pb.main) : 0;
+  const downDiff = down ? (pb.main - priceBlock(DOWN[current]).main) : 0;
+
+  box.innerHTML = `
+    <div class="hero">
+      <div class="eyebrow">${S.pick ? 'נבחר ידנית' : 'החבילה שהכי מתאימה עכשיו'}</div>
+      <span class="fam">${p.fam}${p.flag?' · '+p.flag:''}</span>
+      <h2>${p.name}</h2>
+      <div class="price"><span class="big">${fmt(pb.main)} ₪</span><span class="unit">+ מע"מ${pb.ret?' לחודש':''}</span></div>
+      <div class="sub">${fmt(withVat(pb.main))} ₪ כולל מע"מ</div>
+      ${unit}${four}
+      <ul class="items">${p.items.map(i=>`<li>${i}</li>`).join('')}</ul>
+    </div>
+    ${(()=>{ const bs=r.ranked.find(k=>RET.includes(k)), bv=r.ranked.find(k=>ONE.includes(k));
+      const b=(k,l)=>`<button type="button" data-pick="${k}" class="${k===current?'on':''}"><span class="k">${l}</span><b>${P[k].name}</b><span class="num">${fmt(priceBlock(k).main)} ₪${RET.includes(k)?' לחודש':''}</span></button>`;
+      return `<div class="fampick">${b(bv,'הכי מתאים · חבילת סרטונים')}${b(bs,'הכי מתאים · ניהול סושיאל')}</div>`; })()}
+    ${S.pick?`<div class="override">נבחר ידנית מהקטלוג. <button class="linkbtn" type="button" id="unpick">חזרה להמלצה האוטומטית</button></div>`:''}
+    <div class="pitch"><div class="lbl">מה להגיד</div><p>${p.pitch}</p></div>
+    ${reasons.length?`<div class="card why"><div class="minihead">למה זו ההתאמה</div><ul>${reasons.map(x=>`<li>${x}</li>`).join('')}</ul></div>`:''}
+    <div class="moves">
+      ${up?`<button class="move" type="button" data-pick="${UP[current]}"><span class="k up">שדרוג ▲ +${fmt(upDiff)} ₪</span><b>${up.name}</b><span>${upLine(current)}</span></button>`:''}
+      ${down?`<button class="move" type="button" data-pick="${DOWN[current]}"><span class="k">אם יקר לו ▼ −${fmt(downDiff)} ₪</span><b>${down.name}</b><span>${fmt(priceBlock(DOWN[current]).main)} ₪ + מע"מ</span></button>`:''}
+    </div>
+    <div class="card close"><div class="minihead">סגירה</div>
+      <p>"מה מתאים לך יותר: <b>${p.name}</b> או <b>${P[alt].name}</b>?"</p>
+      ${p.freeMonth?`<p>"ושימי לב, בחבילה הזו מקבלים גם חודש ניהול קמפיין בלי עלות ניהול."</p>`:''}
+      ${urgencyTip()}
+    </div>
+    <div class="card"><div class="minihead">דירוג התאמה (לחיצה מחליפה חבילה)</div>
+      <div class="rank">${r.ranked.slice(0,4).map(k=>`<button class="rrow ${k===current?'on':''}" type="button" data-pick="${k}"><span class="rname">${P[k].name}</span><span class="bar"><i style="width:${Math.max(4,Math.round(Math.max(0,r.s[k])/max*100))}%"></i></span><span class="num">${fmt(priceBlock(k).main)}</span></button>`).join('')}</div>
+    </div>`;
+  box.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ const k=b.dataset.pick; S.pick = (k===r.ranked[0])?null:k; save(); renderRec(); });
+  const u = document.getElementById('unpick'); if(u) u.onclick=()=>{ S.pick=null; save(); renderRec(); };
+  renderSummary(); renderMbar(); fillScriptNames(); renderRail();
+}
+
+function upLine(k){
+  return ({S:'+ באנר חדש כל שבוע, עם כתיבה ועיצוב',CB:'+ 4 סרטוני תדמית AI בחודש',CR:'+ 4 באנרים, וסרטוני תדמית AI',PC:'כל הפלטפורמות ו-3 תכנים בשבוע',
+    IV1:'875 ₪ לסרטון + חודש ניהול חינם',IV4:'700 ₪ לסרטון + אסטרטגיית תוכן',SA1:'375 ₪ לסרטון, בודקים כמה מסרים',SA4:'300 ₪ לסרטון + חודש ניהול חינם',SA10:'סרטוני תדמית מלאים במקום קצרים'})[k]||'';
+}
+function urgencyTip(){
+  if(S.a.urgency==='now') return `<p style="color:var(--muted);font-size:14px">הוא רוצה מהר: עד 7 ימי עסקים לסרטון מרגע אישור התסריט. אפשר להתחיל כבר השבוע.</p>`;
+  if(S.a.urgency==='browse') return `<p style="color:var(--muted);font-size:14px">הוא רק בודק: לא לסיים בלי מועד חזרה ספציפי (יום ושעה).</p>`;
+  return '';
+}
+
+function fillScriptNames(){
+  const nm = S.name || '[שם]';
+  document.querySelectorAll('.nm').forEach(e=>e.textContent=nm);
+  document.querySelectorAll('.pk-now').forEach(e=>e.textContent=current?P[current].name:'[חבילה]');
+  document.querySelectorAll('.pk-alt').forEach(e=>e.textContent=alt?P[alt].name:'[חלופה]');
+  document.querySelectorAll('.pr-now').forEach(e=>{ if(!current){e.textContent='[מחיר]';return;} const pb=priceBlock(current); e.textContent=`${fmt(pb.main)} ₪ + מע"מ${pb.ret?' לחודש':''}`; });
+}
+
+function renderRail(){
+  const groups=[['<div class="secband vid" style="margin-top:4px">חבילות סרטונים<small>תשלום חד-פעמי</small></div><h3>סרטוני תדמית AI · 30–40 ש\'</h3>',['IV1','IV4','IV10']],['<h3>סרטונים מכירתיים · עד 15 ש\'</h3>',['SA1','SA4','SA10']],['<div class="secband soc">ניהול סושיאל<small>קמפיין + תוכן · חודשי</small></div>',RET]];
+  document.getElementById('railList').innerHTML = groups.map(([h,ks])=>h+ks.map(k=>{
+    const p=P[k], ret=RET.includes(k);
+    const bits=[];
+    if(VIDS[k]) bits.push(`<b>${fmt(pv(k,p.price))} ₪ לסרטון</b>`); else bits.push('ללא סרטונים');
+    if(ret) bits.push(`4 חודשים: ${fmt(p.p4)} ₪`);
+    if(p.freeMonth) bits.push('+ חודש ניהול חינם');
+    return `<button class="ri ${k===current?'on':''}" type="button" data-rpick="${k}"><span class="rn">${p.name}${p.flag?`<span class="tag">${p.flag}</span>`:''}</span><span class="rp">${fmt(p.price)} ₪${ret?'<small style="font-weight:500;font-size:11px"> /חודש</small>':''}</span><span class="rs">${bits.join('<span>·</span>')}</span></button>`;
+  }).join('')).join('');
+  document.querySelectorAll('[data-rpick]').forEach(b=>b.onclick=()=>{ S.pick=b.dataset.rpick; save(); document.body.classList.remove('rail-open'); renderRec(); });
+}
+const closeRail=()=>document.body.classList.remove('rail-open');
+document.getElementById('railBtn').onclick=()=>document.body.classList.add('rail-open');
+document.getElementById('railClose').onclick=closeRail;
+document.getElementById('scrim').onclick=closeRail;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeRail(); });
+
+function renderMbar(){
+  document.getElementById('mbName').textContent = current ? P[current].name : 'עוד אין המלצה';
+  document.getElementById('mbPrice').textContent = current ? `${fmt(priceBlock(current).main)} ₪` : '';
+}
+document.getElementById('mbar').onclick = ()=>document.getElementById('rec').scrollIntoView({behavior:'smooth',block:'start'});
+
+function summaryText(){
+  if(!current) return 'סמני תשובות כדי לקבל חבילה, וההודעה תיבנה כאן.';
+  const p=P[current], pb=priceBlock(current);
+  const hi = S.name ? `היי ${S.name}, ` : 'היי, ';
+  let t = `${hi}כיף היה לדבר! 🙂\nכמו שסיכמנו, החבילה שמתאימה ל${S.biz||'עסק שלך'}:\n\n*${p.name}*\n`;
+  t += p.items.map(i=>'• '+i).join('\n');
+  t += `\n\nמחיר: ${fmt(pb.main)} ₪ + מע"מ${pb.ret?' לחודש':''}`;
+  if(pb.use4) t += ` (מסלול 4 חודשים, חיסכון של ${fmt((p.price-p.p4)*4)} ₪)`;
+  if(VIDS[current]) t += `\nיוצא ${fmt(pv(current,pb.main))} ₪ לסרטון.`;
+  t += `\n\nאיך ממשיכים: חותמים על ההסכם, תשלום מראש, ואז שיחת אפיון קצרה ומתחילים לכתוב תסריטים. כל סרטון מוכן עד 7 ימי עסקים מאישור התסריט, עם עד 3 סבבי תיקונים.\n\nלשלוח לך את ההסכם?\n${ME ? ME+', ' : ''}Power Click`;
+  return t;
+}
+function renderSummary(){ document.getElementById('sumText').textContent = summaryText(); }
+document.getElementById('copySum').onclick = ()=>{
+  const t = summaryText(), toast=document.getElementById('copyToast');
+  const done=()=>{ toast.hidden=false; setTimeout(()=>toast.hidden=true,1800); };
+  const fallback=()=>{ const r=document.createRange(); r.selectNodeContents(document.getElementById('sumText')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast.textContent='מסומן, אפשר להעתיק'; done(); };
+  try{ navigator.clipboard.writeText(t).then(()=>{toast.textContent='הועתק'; done();}, fallback); }catch(e){ fallback(); }
+};
+
+/* objections */
+const OBJ = [
+  ['"יקר לי"', 'מבינה לגמרי. יקר ביחס למה? לתקציב שתכננת, או למה שאתה מקבל?',
+   ['אם זה התקציב: מציעים את החלופה הזולה מהפאנל ("אם יקר לו") או את מסלול 4 החודשים (15% הנחה).','אם זה הערך: מפרקים ליחידה. "זה 875 ₪ לסרטון עם תסריט, קריינות ועריכה. יום צילום עם צלם עולה יותר, ובלי תסריט."','בחבילות 4 ו-10 סרטונים: להזכיר את חודש הניהול בלי עלות.']],
+  ['"אני צריך לחשוב על זה"', 'בטח. רק שאבין: על מה בדיוק? המחיר, אם זה מתאים, או התזמון?',
+   ['ברוב המקרים יש התנגדות אמיתית מאחורי זה. שואלים, מקשיבים, ועונים עליה.','אם באמת צריך לחשוב: קובעים יום ושעה לחזור ("נדבר ביום חמישי ב-11?") ושולחים את הסיכום מלשונית "סיכום ללקוח".']],
+  ['"כבר ניסיתי שיווק ולא עבד"', 'מה בדיוק עשיתם? מי הכין את התוכן ומי ניהל את הקמפיין?',
+   ['בדרך כלל חסר אחד מהשלושה: מסר, תוכן או אופטימיזציה. אצלנו שלושתם באותה יד.','לא מבטיחים מספר לידים (גם בהסכם). כן מתחייבים לתהליך: אפיון, אסטרטגיה, תוכן, מעקב ושיפור.']],
+  ['"סרטוני AI נראים מזויפים"', 'לגמרי, יש הרבה כאלה. אפשר להראות לך כמה דוגמאות שלנו?',
+   ['יש 3 סגנונות: ריאליסטי, אנימציה, פרסומי דינמי. בוחרים מה שמתאים למותג.','הוא מאשר את התסריט לפני ההפקה, ויש עד 3 סבבי תיקונים.']],
+  ['"אני יכול לעשות את זה לבד"', 'אפשר בהחלט. כמה זמן בשבוע זה ייקח לך, ומה השעה שלך שווה?',
+   ['מה שהוא לא יעשה לבד: אסטרטגיה, תסריט מכירתי ואופטימיזציה של הקמפיין לאורך זמן.','"הורדת עומס מבעל העסק" היא חלק מהערך.']],
+  ['"אין לי תקציב לפרסום"', 'בוא נדבר על מה כן אפשר. יש לנו נקודות כניסה קטנות.',
+   ['סרטון מכירתי קצר ב-500 ₪, או Starter ב-1,500 ₪ לחודש.','תקציב המדיה משולם ישירות לפלטפורמות, והוא קובע את הסכום.']],
+  ['"תשלחי לי הצעה במייל"', 'בשמחה. כדי שאשלח משהו שמתאים בדיוק: מבין שתי האפשרויות, איזו קרובה יותר?',
+   ['מקבלים בחירה לפני השליחה, וקובעים מתי מדברים שוב.','שולחים את ההודעה מ"סיכום ללקוח", לא את כל המצגת.']],
+  ['"אתם מבטיחים תוצאות?"', 'אני לא אבטיח לך מספר לידים, כי זה תלוי גם בתחום, בתחרות ובפלטפורמות. מי שמבטיח, לא אומר אמת.',
+   ['מה כן מבטיחים: תוכן מקצועי בזמן, קמפיין שמנוהל ומשתפר כל שבוע, ושקיפות מלאה.']],
+  ['"למה להתחייב ל-4 חודשים?"', 'שאלה טובה. קמפיינים צריכים זמן ללמוד את הקהל, והחודש הראשון הוא בעיקר למידה.',
+   ['ב-4 חודשים חוסכים 15%. ב-Premium Content זה 2,100 ₪.','אפשר גם חודש-חודש, במחיר המלא.']],
+  ['"כמה זמן זה לוקח?"', 'עד 7 ימי עסקים לסרטון, מרגע שקיבלנו את החומרים ואישרת את התסריט.',
+   ['הלקוח משפיע על הקצב: חומרים ואישורים מהירים = אספקה מהירה.']]
+];
+function renderObj(){
+  const box=document.getElementById('objections');
+  box.innerHTML = OBJ.map(([h,ans,more])=>`<details class="obj"><summary>${h}</summary><div class="body"><div class="quote">${ans}</div>${more.map(m=>`<p>• ${m}</p>`).join('')}</div></details>`).join('');
+}
+
+/* catalog */
+function renderCatalog(){
+  const box=document.getElementById('catalog');
+  const card = k=>{ const p=P[k], ret=RET.includes(k);
+    return `<div class="pk ${p.flag?'flag':''}"><div class="hd"><h4>${p.name}</h4>${p.flag?`<span class="badge">${p.flag}</span>`:''}</div>
+      <div class="pr">${fmt(p.price)} ₪ <small>+ מע"מ${ret?' לחודש':''}</small></div>
+      ${ret?`<div class="unitp">4 חודשים: ${fmt(p.p4)} ₪ לחודש</div>`:''}
+      ${VIDS[k]?`<div class="unitp">${fmt(pv(k,p.price))} ₪ לסרטון${ret?` · ב-4 חודשים ${fmt(pv(k,p.p4))} ₪`:''}</div>`:`<div class="unitp" style="color:var(--muted)">ללא סרטונים</div>`}
+      <ul>${p.items.map(i=>`<li>${i}</li>`).join('')}</ul>
+      <button class="btn" type="button" data-cpick="${k}">להציע את זו</button></div>`; };
+  box.innerHTML = `<section class="catsec"><div class="secband vid">חבילות סרטונים<small>הפקת סרטוני AI · תשלום חד-פעמי</small></div>
+    <h3>סרטוני תדמית AI (30–40 שניות)</h3><div class="cgrid">${['IV1','IV4','IV10'].map(card).join('')}</div>
+    <h3>סרטונים מכירתיים קצרים (עד 15 שניות)</h3><div class="cgrid">${['SA1','SA4','SA10'].map(card).join('')}</div>
+    <h3>השוואת חבילות סרטונים</h3>
+    <div class="tablewrap"><table><thead><tr><th>חבילה</th><th>אורך</th><th>סרטונים</th><th>מחיר</th><th>מחיר לסרטון</th><th>חיסכון</th></tr></thead><tbody>
+      ${ONE.map(k=>{const p=P[k],b=k.startsWith('IV')?1000:500;return `<tr><td>${p.name}</td><td>${k.startsWith('IV')?'30–40 ש\'':'עד 15 ש\''}</td><td class="num">${p.units}</td><td class="num">${fmt(p.price)} ₪</td><td class="num"><b>${fmt(pv(k,p.price))} ₪</b></td><td class="num">${p.units>1?fmt(b*p.units-p.price)+' ₪':'—'}</td></tr>`}).join('')}
+    </tbody></table></div></section>
+    <section class="catsec"><div class="secband soc">ניהול סושיאל<small>ניהול קמפיינים + תוכן · תשלום חודשי · 4 חודשים = 15% הנחה</small></div>
+    <div class="cgrid">${RET.map(card).join('')}</div>
+    <h3>השוואת חבילות ניהול סושיאל</h3>
+    <div class="tablewrap"><table><thead><tr><th>חבילה</th><th>פלטפורמות</th><th>סרטונים בחודש</th><th>באנרים בחודש</th><th>מחיר</th><th>4 חודשים</th><th>מחיר לסרטון</th></tr></thead><tbody>
+      <tr><td>Starter</td><td>1</td><td class="num">0</td><td class="num">0</td><td class="num">1,500 ₪</td><td class="num">1,275 ₪</td><td class="num">—</td></tr>
+      <tr><td>Campaign + Banners</td><td>1</td><td class="num">0</td><td class="num">4</td><td class="num">2,000 ₪</td><td class="num">1,700 ₪</td><td class="num">—</td></tr>
+      <tr><td>Campaign + Reels</td><td>1</td><td class="num">4</td><td class="num">0</td><td class="num">2,500 ₪</td><td class="num">2,125 ₪</td><td class="num">625 ₪ (4 חודשים: 531 ₪)</td></tr>
+      <tr><td>Premium Content</td><td>1</td><td class="num">4 (AI)</td><td class="num">4</td><td class="num">3,500 ₪</td><td class="num">2,975 ₪</td><td class="num">875 ₪ (4 חודשים: 744 ₪)</td></tr>
+      <tr><td>Full Scale Business</td><td>כולן</td><td class="num">2 בשבוע</td><td class="num">1 בשבוע</td><td class="num">6,000 ₪</td><td class="num">5,100 ₪</td><td class="num">כ-750 ₪ (4 חודשים: כ-638 ₪)</td></tr>
+    </tbody></table></div>
+    <p style="color:var(--muted);font-size:14px">המחיר לסרטון כולל גם את ניהול הקמפיין והבאנרים.</p></section>
+    <p style="color:var(--muted);font-size:14px">כל המחירים לפני מע"מ.</p>
+    <p style="color:var(--muted);font-size:14px">כל החבילות הן מסלולי בסיס. אפשר להוסיף או להוריד שירותים, לשנות כמויות ולהתאים לעסק.</p>`;
+  box.querySelectorAll('[data-cpick]').forEach(b=>b.onclick=()=>{ S.pick=b.dataset.cpick; save(); renderRec(); document.getElementById('rec').scrollIntoView({behavior:'smooth',block:'start'}); });
+}
+function renderAddons(){
+  const rows=[['סבב תיקונים נוסף',150],['סרטון AI נוסף (מעבר לחבילה)',1000],['סרטון מכירתי קצר נוסף',400]];
+  document.getElementById('addons').innerHTML = rows.map(([n,p])=>`<tr><td>${n}</td><td class="num">${fmt(p)} ₪ + מע"מ</td><td class="num">${fmt(withVat(p))} ₪</td></tr>`).join('')
+    + `<tr><td>שינוי מהותי בתסריט אחרי אישור</td><td colspan="2">מחויב כהפקה חדשה</td></tr>`;
+}
+
+/* tabs */
+function showTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.tab===t)));
+  document.querySelectorAll('.panel').forEach(p=>p.hidden = p.dataset.panel!==t);
+  store.tab(t);
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+
+/* client fields */
+const bind=(id,key)=>{ const e=document.getElementById(id); e.value=S[key]||''; e.oninput=()=>{ S[key]=e.value; S.example=false; save(); renderSummary(); fillScriptNames(); }; };
+function bindAll(){ bind('cName','name'); bind('cBiz','biz'); bind('notes','notes'); bind('cPhone','phone'); bind('cFollow','followUp'); bind('cLog','logDraft'); renderPrevLog();
+  const st=document.getElementById('cStatus'); st.value=S.status||'new'; st.onchange=()=>{ S.status=st.value; save(); };
+  setSaveMsg(); }
+
+function save(){ store.set(S); }
+
+/* ---------- clients (db) ---------- */
+const STATUS = {new:'שיחה ראשונה', followup:'לחזור אליו', offer:'נשלחה הצעה', won:'נסגר', lost:'לא רלוונטי'};
+let DB = null, CCOL = null, ME = '', CLIENTS = [], CFILTER = 'all', CQUERY = '', dbState = 'loading';
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const dayKey = d => d.toISOString ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : '';
+function fuState(c){
+  if(!c.followUp || c.status==='won' || c.status==='lost') return '';
+  const d = new Date(c.followUp); if(isNaN(d)) return '';
+  const now = new Date();
+  if(d < now) return 'late';
+  if(dayKey(d)===dayKey(now)) return 'today';
+  return 'later';
+}
+const fmtDT = v => { const d=new Date(v); if(isNaN(d)) return ''; return d.toLocaleString('he-IL',{weekday:'short',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'}); };
+
+// keep every written note; drop old status-only lines first, so the doc stays well under the size cap
+function trimLog(log){
+  let out=log.slice();
+  while(out.length>120){ const i=out.findIndex(e=>!e.text); if(i<0) break; out.splice(i,1); }
+  while(JSON.stringify(out).length>200000) out.shift();
+  return out;
+}
+function logHTML(log, onlyText){
+  return log.slice().reverse().filter(e=>!onlyText||e.text).map(e=>{
+    const meta=`${fmtDT(e.at)} · ${STATUS[e.status]||''}${e.pkg?' · '+esc(e.pkg):''}${e.followUp?' · לחזור '+fmtDT(e.followUp):''}`;
+    return e.text ? `<div class="lentry"><span class="when">${meta}</span>${esc(e.text)}</div>` : `<div class="lentry sys">${meta}</div>`;
+  }).join('');
+}
+function renderPrevLog(){
+  const box=document.getElementById('prevLog'); if(!box) return;
+  const c=S.clientId && CLIENTS.find(x=>x.id===S.clientId);
+  const log=(c&&c.log)||[];
+  box.innerHTML = log.length ? `<div class="minihead">תיעוד קודם עם ${esc(c.name||'הלקוח')}</div><div class="prev">${logHTML(log)}</div>` : '';
+}
+function renderMe(){
+  const el=document.getElementById('meName');
+  el.textContent = ME ? `מחובר/ת: ${ME}` : '';
+  el.hidden = !ME;
+  document.querySelectorAll('.me').forEach(e=>e.textContent = ME || '[השם שלך]');
+  renderSummary();
+}
+function setSaveMsg(text, cls){
+  const m=document.getElementById('saveMsg'); if(!m) return;
+  if(text){ m.textContent=text; m.className='savemsg '+(cls||''); return; }
+  const c = S.clientId && CLIENTS.find(x=>x.id===S.clientId);
+  if(c){ m.textContent=`שמור בלקוחות · עודכן ${fmtDT(c.updatedAt)}`; m.className='savemsg ok'; }
+  else { m.textContent = dbState==='off' ? 'אין חיבור לשרת. רענני את הדף.' : 'השיחה עוד לא נשמרה'; m.className='savemsg'; }
+}
+
+// Server API wrapped in the same small surface the page already uses (doc().set/update/delete, orderBy().onSnapshot)
+async function api(method, url, body){
+  const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined, credentials:'same-origin'});
+  if(r.status===401){ location.reload(); throw {code:'unauth'}; }
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw {code: j.code || 'unavailable'};
+  return j;
+}
+function makeClientsCollection(){
+  const listeners = [];
+  let timer = null;
+  async function refresh(){
+    try{
+      const {clients} = await api('GET','/api/clients');
+      clients.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+      const snap = {docs: clients.map(c=>({id:c.id, data:()=>c}))};
+      listeners.forEach(l=>l.next(snap));
+    }catch(e){ if(e.code!=='unauth') listeners.forEach(l=>l.error && l.error(e)); }
+  }
+  const newId = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'') : Date.now().toString(36)+Math.random().toString(36).slice(2)).slice(0,24);
+  return {
+    refresh,
+    doc(id){
+      id = id || newId();
+      const url = '/api/clients?id='+encodeURIComponent(id);
+      return {
+        id,
+        async set(data){ await api('PUT', url, {data, mode:'set'}); refresh(); },
+        async update(data){ await api('PUT', url, {data, mode:'merge'}); refresh(); },
+        async delete(){ await api('DELETE', url); refresh(); }
+      };
+    },
+    orderBy(){ return { onSnapshot(next, error){
+      listeners.push({next, error}); refresh();
+      if(!timer) timer = setInterval(()=>{ if(!document.hidden) refresh(); }, 30000);
+      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refresh(); });
+    } }; }
+  };
+}
+async function initClients(){
+  ME = SESSION_USER.name;
+  renderMe();
+  DB = true;
+  CCOL = makeClientsCollection();
+  dbState='on';
+  CCOL.orderBy('updatedAt','desc').onSnapshot(snap=>{
+    CLIENTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderClients(); setSaveMsg(); renderPrevLog();
+  }, err=>{ dbState='err'; renderClients(); setSaveMsg('לא הצלחתי לטעון את רשימת הלקוחות. רענני את הדף.', 'err'); });
+}
+
+async function saveClient(){
+  if(!DB){ setSaveMsg('אין חיבור לשרת. רענני את הדף.','err'); return; }
+  if(!(S.name||'').trim() && !(S.phone||'').trim()){ setSaveMsg('צריך לפחות שם או טלפון כדי לשמור','err'); document.getElementById('cName').focus(); return; }
+  const btn=document.getElementById('saveClient'); btn.disabled=true; setSaveMsg('שומרת...');
+  const now=Date.now(), pb=current?priceBlock(current):null;
+  const entry={at:now, status:S.status||'new', pkg:current?P[current].name:'', followUp:S.followUp||''};
+  const txt=(S.logDraft||'').trim(); if(txt) entry.text=txt.slice(0,3000);
+  const rec={name:S.name||'', biz:S.biz||'', phone:S.phone||'', status:S.status||'new', followUp:S.followUp||'', notes:S.notes||'',
+    a:{...S.a}, pkg:current||'', pkgName:current?P[current].name:'', price:pb?pb.main:0, monthly:pb?pb.ret:false, updatedAt:now};
+  try{
+    const old = S.clientId && CLIENTS.find(x=>x.id===S.clientId);
+    if(old){
+      rec.log=trimLog([...(old.log||[]), entry]);
+      await CCOL.doc(S.clientId).update(rec);
+    } else {
+      const ref=CCOL.doc();
+      rec.createdAt=now; rec.log=[entry];
+      await ref.set(rec); S.clientId=ref.id;
+    }
+    S.example=false; S.logDraft=''; document.getElementById('cLog').value=''; save(); setSaveMsg('נשמר בלקוחות','ok'); setTimeout(()=>setSaveMsg(),2500);
+  }catch(e){
+    setSaveMsg(e && e.code==='too_large' ? 'התיעוד של הלקוח הזה ארוך מדי. מחקי תיעוד ישן ונסי שוב.' : 'השמירה לא הצליחה. נסי שוב בעוד רגע.','err');
+  }finally{ btn.disabled=false; }
+}
+document.getElementById('saveClient').onclick=saveClient;
+
+function openClient(id){
+  const c=CLIENTS.find(x=>x.id===id); if(!c) return;
+  S={a:{...(c.a||{})}, name:c.name||'', biz:c.biz||'', notes:c.notes||'', phone:c.phone||'', status:c.status||'new', followUp:c.followUp||'', logDraft:'', clientId:c.id, pick:c.pkg||null, example:false};
+  save(); bindAll(); renderQuestions(); renderRec(); window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderClients(){
+  const list=document.getElementById('cList'); if(!list) return;
+  const late=CLIENTS.filter(c=>fuState(c)==='late'), today=CLIENTS.filter(c=>fuState(c)==='today');
+  const pill=document.getElementById('duePill'), cnt=document.getElementById('tabCnt');
+  const due=late.length+today.length;
+  pill.hidden=!due; pill.className='duepill'+(late.length?' late':'');
+  pill.textContent = late.length ? `${late.length} באיחור · ${today.length} להיום` : `${today.length} לחזור היום`;
+  cnt.hidden=!due; cnt.textContent=due;
+
+  if(dbState==='off'){ list.innerHTML='<div class="cempty">אין חיבור לשרת. רענני את הדף.</div>'; document.getElementById('cStats').innerHTML=''; return; }
+  if(dbState==='err'){ list.innerHTML='<div class="cempty">לא הצלחתי לטעון את הלקוחות. רענני את הדף.</div>'; return; }
+
+  const won=CLIENTS.filter(c=>c.status==='won');
+  document.getElementById('cStats').innerHTML = `<span><b>${CLIENTS.length}</b> לקוחות</span><span><b>${due}</b> לחזור היום ובאיחור</span><span><b>${won.length}</b> נסגרו</span><span><b>${fmt(won.reduce((t,c)=>t+(c.price||0),0))} ₪</b> במכירות שנסגרו</span>`;
+
+  const F={all:'הכל',due:'לחזור',open:'פתוחים',won:'נסגרו',lost:'לא רלוונטי'};
+  const fb=document.getElementById('cFilter');
+  fb.innerHTML=Object.entries(F).map(([k,v])=>`<button class="chip" type="button" aria-pressed="${CFILTER===k}" data-f="${k}">${v}</button>`).join('');
+  fb.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ CFILTER=b.dataset.f; renderClients(); });
+
+  const q=CQUERY.trim().toLowerCase();
+  const rank=c=>({late:0,today:1,later:2}[fuState(c)] ?? 3);
+  let rows=CLIENTS.filter(c=>{
+    if(CFILTER==='due' && !fuState(c)) return false;
+    if(CFILTER==='open' && (c.status==='won'||c.status==='lost')) return false;
+    if(CFILTER==='won' && c.status!=='won') return false;
+    if(CFILTER==='lost' && c.status!=='lost') return false;
+    if(q && !`${c.name} ${c.biz} ${c.phone}`.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((x,y)=> rank(x)-rank(y) || (rank(x)<3 ? new Date(x.followUp)-new Date(y.followUp) : (y.updatedAt||0)-(x.updatedAt||0)));
+
+  if(!CLIENTS.length){ list.innerHTML='<div class="cempty">עוד אין לקוחות שמורים. אחרי שיחה לוחצים "שמירה בלקוחות", והלקוח יופיע כאן עם החבילה, ההערות ומועד החזרה.</div>'; return; }
+  if(!rows.length){ list.innerHTML='<div class="cempty">אין לקוחות שמתאימים לסינון הזה.</div>'; return; }
+
+  list.innerHTML=rows.map(c=>{
+    const fs=fuState(c);
+    const fuTxt = c.followUp && fs ? `<span class="fu ${fs==='late'?'late':''}">${fs==='late'?'באיחור: ':fs==='today'?'היום: ':'לחזור: '}${fmtDT(c.followUp)}</span>` : '';
+    const price = c.pkgName ? `${esc(c.pkgName)} · ${fmt(c.price||0)} ₪${c.monthly?' לחודש':''}` : 'לא נבחרה חבילה';
+    const log=(c.log||[]).slice().reverse();
+    return `<div class="cl ${fs==='late'?'late':fs==='today'?'today':''}">
+      <div style="display:grid;gap:4px;min-width:0">
+        <h4>${esc(c.name||'ללא שם')} <span class="spill ${esc(c.status)}">${STATUS[c.status]||''}</span></h4>
+        <div class="meta">${c.biz?`<span>${esc(c.biz)}</span>`:''}${c.phone?`<span class="ph">${esc(c.phone)}</span>`:''}<span>${price}</span></div>
+        ${fuTxt}
+      </div>
+      <div class="acts">
+        <select data-st="${c.id}" aria-label="סטטוס">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${c.status===k?'selected':''}>${v}</option>`).join('')}</select>
+        <button class="btn" type="button" data-open="${c.id}">פתיחה</button>
+        <button class="btn danger" type="button" data-del="${c.id}">מחיקה</button>
+      </div>
+      ${c.notes?`<div class="note">${esc(c.notes)}</div>`:''}
+      ${(()=>{ const texts=(c.log||[]).filter(e=>e.text); const last=texts.slice(-2);
+        return (last.length?`<div class="logs">${logHTML(last,true)}</div>`:'') + ((c.log||[]).length>last.length?`<details><summary>כל התיעוד וההיסטוריה (${(c.log||[]).length})</summary><div class="logs" style="margin-top:6px">${logHTML(c.log||[])}</div></details>`:''); })()}
+      <div class="qadd"><textarea id="qa-${c.id}" placeholder="הוספת תיעוד ללקוח הזה..."></textarea><button class="btn" type="button" data-qadd="${c.id}">הוספה</button></div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openClient(b.dataset.open));
+  list.querySelectorAll('[data-qadd]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.qadd, ta=document.getElementById('qa-'+id), c=CLIENTS.find(x=>x.id===id);
+    const txt=(ta.value||'').trim(); if(!c||!txt){ ta.focus(); return; }
+    b.disabled=true; const now=Date.now();
+    try{ await CCOL.doc(id).update({updatedAt:now, log:trimLog([...(c.log||[]),{at:now,status:c.status||'new',pkg:c.pkgName||'',followUp:c.followUp||'',text:txt.slice(0,3000)}])}); }
+    catch(e){ b.disabled=false; b.textContent='לא נשמר, נסי שוב'; }
+  });
+  list.querySelectorAll('[data-st]').forEach(sel=>sel.onchange=async()=>{
+    const c=CLIENTS.find(x=>x.id===sel.dataset.st); if(!c) return;
+    const now=Date.now();
+    try{ await CCOL.doc(c.id).update({status:sel.value, updatedAt:now, log:trimLog([...(c.log||[]),{at:now,status:sel.value,pkg:c.pkgName||'',followUp:c.followUp||''}])});
+      if(S.clientId===c.id){ S.status=sel.value; save(); document.getElementById('cStatus').value=sel.value; } }
+    catch(e){ sel.value=c.status; }
+  });
+  list.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='בטוח? למחוק'; setTimeout(()=>{ if(b.isConnected){ b.dataset.armed=''; b.textContent='מחיקה'; } },4000); return; }
+    try{ await CCOL.doc(b.dataset.del).delete(); if(S.clientId===b.dataset.del){ S.clientId=null; save(); setSaveMsg(); } }catch(e){ b.textContent='המחיקה נכשלה'; }
+  });
+}
+document.getElementById('logout').onclick=async()=>{ try{ await fetch('/api/logout',{method:'POST'}); }catch(e){} location.reload(); };
+document.getElementById('cSearch').oninput=e=>{ CQUERY=e.target.value; renderClients(); };
+document.getElementById('toClients').onclick=document.getElementById('duePill').onclick=()=>{ showTab('clients'); document.querySelector('.tabs').scrollIntoView({behavior:'smooth',block:'start'}); };
+setInterval(()=>{ if(CLIENTS.length && !document.getElementById('cList').contains(document.activeElement) && !document.querySelector('#cList details[open]') && ![...document.querySelectorAll('.qadd textarea')].some(t=>t.value.trim())) renderClients(); }, 60000);
+document.getElementById('newCall').onclick=()=>{ S={a:{},name:'',biz:'',notes:'',phone:'',status:'new',followUp:'',logDraft:'',clientId:null,pick:null,example:false}; save(); bindAll(); renderQuestions(); renderRec(); window.scrollTo({top:0,behavior:'smooth'}); };
+
+document.getElementById('cStatus').innerHTML = Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+bindAll(); renderQuestions(); renderRec(); renderObj(); renderCatalog(); renderAddons(); initClients();
+showTab(store.tab() || 'script');
+</script>
+
+</body>
+</html>

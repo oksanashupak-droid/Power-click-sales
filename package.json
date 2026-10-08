@@ -1,0 +1,8 @@
+{
+  "name": "power-click-sales",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Power Click sales call assistant with per-user client lists",
+  "engines": { "node": ">=20" }
+}

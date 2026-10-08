@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Power Click עוזר שיחה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Secular+One&display=swap">
+<style>
+:root{--bg:#F4F2F8;--surface:#FFFFFF;--line:#DDD6EA;--ink:#1D1430;--muted:#6A6182;--brand:#3B1A73;--brand-ink:#FFFFFF;--sun:#F4C61B;--warn:#A35A00;
+  --f-display:"Secular One","Assistant",system-ui,sans-serif;--f-body:"Assistant",system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+@media (prefers-color-scheme: dark){:root{--bg:#130C20;--surface:#1D1530;--line:#352A50;--ink:#EFEAF8;--muted:#A79EBD;--brand:#B89BFF;--brand-ink:#170D2B;--sun:#F6CD2E;--warn:#F2B35C;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;display:grid;place-items:center;padding-inline:16px}
+form{width:min(380px,100%);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:grid;gap:14px}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:38px;height:38px;border-radius:10px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-family:var(--f-display);font-size:22px;position:relative}
+.mark::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;background:var(--sun);bottom:4px;left:4px}
+h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
+small{color:var(--muted)}
+.who{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.who label{border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;font-weight:800;font-size:18px;cursor:pointer}
+.who input{position:absolute;opacity:0;pointer-events:none}
+.who label:has(input:checked){background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.who label:has(input:focus-visible){outline:3px solid var(--sun);outline-offset:2px}
+.f{display:grid;gap:4px;font-size:13px;font-weight:700;color:var(--muted)}
+input[type=password]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input[type=password]:focus-visible,button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:11px;background:var(--sun);color:#231600;cursor:pointer}
+button:disabled{opacity:.6}
+.err{color:var(--warn);font-weight:700;font-size:14px;min-height:1.2em;margin:0}
+</style>
+</head>
+<body>
+<form id="f">
+  <div class="brand"><div class="mark" aria-hidden="true">P</div><div><h1>עוזר שיחת מכירה</h1><small>Power Click</small></div></div>
+  <div class="who" role="radiogroup" aria-label="מי נכנס">
+    <label><input type="radio" name="user" value="oksana" id="u-oksana" checked>אוקסנה</label>
+    <label><input type="radio" name="user" value="stas" id="u-stas">סטס</label>
+  </div>
+  <label class="f">סיסמה<input type="password" id="pw" autocomplete="current-password" required></label>
+  <button type="submit" id="go">כניסה</button>
+  <p class="err" id="err" role="alert"></p>
+</form>
+<script>
+try{ const last=localStorage.getItem('pc-last-user'); if(last){ const r=document.getElementById('u-'+last); if(r) r.checked=true; } }catch(e){}
+document.getElementById('pw').focus();
+document.getElementById('f').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const user=document.querySelector('input[name=user]:checked').value, btn=document.getElementById('go'), err=document.getElementById('err');
+  btn.disabled=true; err.textContent='';
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user,password:document.getElementById('pw').value})});
+    if(r.ok){ try{ localStorage.setItem('pc-last-user',user); }catch(e){} location.reload(); return; }
+    err.textContent = r.status===401 ? 'הסיסמה לא נכונה. נסו שוב.' : 'הכניסה לא הצליחה. נסו שוב בעוד רגע.';
+  }catch(e){ err.textContent='אין חיבור לאינטרנט. נסו שוב.'; }
+  btn.disabled=false;
+});
+</script>
+</body>
+</html>
