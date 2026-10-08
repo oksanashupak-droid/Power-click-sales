@@ -232,6 +232,15 @@ tr:last-child td{border-bottom:0}
 .lookres .ph{font-family:var(--f-num);direction:ltr;text-align:end;font-size:13px;color:var(--muted)}
 .lookres .none{padding:8px 10px;color:var(--muted);font-size:14px}
 .dupe{font-size:13.5px;background:var(--sun-soft);border-radius:8px;padding:6px 10px;grid-column:1 / -1}
+/* daily summary */
+.daily{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.daily summary{cursor:pointer;font-weight:800}
+.dtots{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0;font-size:14px;color:var(--muted)}
+.dtots b{font-family:var(--f-num);font-variant-numeric:tabular-nums;color:var(--ink);font-size:18px;margin-inline-end:4px}
+.daily table{min-width:520px}
+.daily td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.daily tr.today td{background:var(--sun-soft);font-weight:700}
+.daily tr.zero td{color:var(--muted)}
 /* clients */
 select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
 input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 10px;width:100%}
@@ -340,6 +349,7 @@ input[type=datetime-local],input[type=tel]{font:inherit;color:var(--ink);backgro
 
     <div class="panel" data-panel="clients">
       <div class="cstats" id="cStats"></div>
+      <details class="daily" id="dailyBox" open><summary>סיכום שיחות לפי יום</summary><div id="daily"></div></details>
       <div class="ctools">
         <div class="chips" id="cFilter" role="group" aria-label="סינון"></div>
         <input type="text" id="cSearch" placeholder="חיפוש לפי שם, עסק או טלפון">
@@ -898,7 +908,7 @@ async function saveClient(){
   if(!(S.name||'').trim() && !(S.phone||'').trim()){ setSaveMsg('צריך לפחות שם או טלפון כדי לשמור','err'); document.getElementById('cName').focus(); return; }
   const btn=document.getElementById('saveClient'); btn.disabled=true; setSaveMsg('שומרת...');
   const now=Date.now(), pb=current?priceBlock(current):null;
-  const entry={at:now, status:S.status||'new', pkg:current?P[current].name:'', followUp:S.followUp||''};
+  const entry={at:now, kind:'call', status:S.status||'new', pkg:current?P[current].name:'', followUp:S.followUp||''};
   const txt=(S.logDraft||'').trim(); if(txt) entry.text=txt.slice(0,3000);
   const rec={name:S.name||'', biz:S.biz||'', phone:S.phone||'', status:S.status||'new', followUp:S.followUp||'', notes:S.notes||'',
     a:{...S.a}, pkg:current||'', pkgName:current?P[current].name:'', price:pb?pb.main:0, monthly:pb?pb.ret:false, updatedAt:now};
@@ -954,6 +964,41 @@ function openClient(id){
   save(); bindAll(); renderQuestions(); renderRec(); window.scrollTo({top:0,behavior:'smooth'});
 }
 
+// A "call" = a saved call (שמירה בלקוחות). The same client saved twice on one day counts once.
+// Entries saved before calls were tagged (no kind) count as calls.
+function dailyStats(){
+  const days={};
+  const day=k=>days[k]||(days[k]={calls:new Set(),newC:0,won:0,wonSum:0,notes:0});
+  for(const c of CLIENTS){
+    if(c.createdAt) day(dayKey(new Date(c.createdAt))).newC++;
+    let prev='';
+    for(const e of (c.log||[])){
+      const k=dayKey(new Date(e.at));
+      if(e.kind==='call' || !e.kind) day(k).calls.add(c.id);
+      if(e.kind==='note') day(k).notes++;
+      if(e.status==='won' && prev!=='won'){ day(k).won++; day(k).wonSum+=c.price||0; }
+      prev=e.status;
+    }
+  }
+  return days;
+}
+function renderDaily(){
+  const box=document.getElementById('daily'); if(!box) return;
+  const days=dailyStats(), now=new Date();
+  const get=d=>days[dayKey(d)]||{calls:new Set(),newC:0,won:0,wonSum:0,notes:0};
+  const sumRange=n=>{ let calls=0,won=0,sum=0; for(let i=0;i<n;i++){ const d=new Date(now); d.setDate(d.getDate()-i); const x=get(d); calls+=x.calls.size; won+=x.won; sum+=x.wonSum; } return {calls,won,sum}; };
+  const t=sumRange(1), w=sumRange(7), m=sumRange(30);
+  let rows='';
+  for(let i=0;i<14;i++){
+    const d=new Date(now); d.setDate(d.getDate()-i); const x=get(d);
+    const label = i===0?'היום':i===1?'אתמול':d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'numeric'});
+    const zero=!x.calls.size&&!x.newC&&!x.won&&!x.notes;
+    rows+=`<tr class="${i===0?'today':''} ${zero&&i?'zero':''}"><td>${label}</td><td class="n">${x.calls.size}</td><td class="n">${x.newC}</td><td class="n">${x.notes}</td><td class="n">${x.won}</td><td class="n">${x.wonSum?fmt(x.wonSum)+' ₪':'—'}</td></tr>`;
+  }
+  box.innerHTML=`<div class="dtots"><span><b>${t.calls}</b>שיחות היום</span><span><b>${w.calls}</b>ב-7 ימים</span><span><b>${m.calls}</b>ב-30 ימים</span><span><b>${w.won}</b>נסגרו השבוע${w.sum?` · ${fmt(w.sum)} ₪`:''}</span></div>
+    <div class="tablewrap"><table><thead><tr><th>יום</th><th>שיחות</th><th>לקוחות חדשים</th><th>תיעודים נוספים</th><th>נסגרו</th><th>סכום שנסגר</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p style="margin:8px 0 0;font-size:13px;color:var(--muted)">שיחה נספרת כשלוחצים "שמירה בלקוחות". אותו לקוח שנשמר כמה פעמים באותו יום נספר פעם אחת.</p>`;
+}
 function renderClients(){
   const list=document.getElementById('cList'); if(!list) return;
   const late=CLIENTS.filter(c=>fuState(c)==='late'), today=CLIENTS.filter(c=>fuState(c)==='today');
@@ -966,6 +1011,7 @@ function renderClients(){
   if(dbState==='off'){ list.innerHTML='<div class="cempty">אין חיבור לשרת. רענני את הדף.</div>'; document.getElementById('cStats').innerHTML=''; return; }
   if(dbState==='err'){ list.innerHTML='<div class="cempty">לא הצלחתי לטעון את הלקוחות. רענני את הדף.</div>'; return; }
 
+  renderDaily();
   const won=CLIENTS.filter(c=>c.status==='won');
   document.getElementById('cStats').innerHTML = `<span><b>${CLIENTS.length}</b> לקוחות</span><span><b>${due}</b> לחזור היום ובאיחור</span><span><b>${won.length}</b> נסגרו</span><span><b>${fmt(won.reduce((t,c)=>t+(c.price||0),0))} ₪</b> במכירות שנסגרו</span>`;
 
@@ -1016,13 +1062,13 @@ function renderClients(){
     const id=b.dataset.qadd, ta=document.getElementById('qa-'+id), c=CLIENTS.find(x=>x.id===id);
     const txt=(ta.value||'').trim(); if(!c||!txt){ ta.focus(); return; }
     b.disabled=true; const now=Date.now();
-    try{ await CCOL.doc(id).update({updatedAt:now, log:trimLog([...(c.log||[]),{at:now,status:c.status||'new',pkg:c.pkgName||'',followUp:c.followUp||'',text:txt.slice(0,3000)}])}); }
+    try{ await CCOL.doc(id).update({updatedAt:now, log:trimLog([...(c.log||[]),{at:now,kind:'note',status:c.status||'new',pkg:c.pkgName||'',followUp:c.followUp||'',text:txt.slice(0,3000)}])}); }
     catch(e){ b.disabled=false; b.textContent='לא נשמר, נסי שוב'; }
   });
   list.querySelectorAll('[data-st]').forEach(sel=>sel.onchange=async()=>{
     const c=CLIENTS.find(x=>x.id===sel.dataset.st); if(!c) return;
     const now=Date.now();
-    try{ await CCOL.doc(c.id).update({status:sel.value, updatedAt:now, log:trimLog([...(c.log||[]),{at:now,status:sel.value,pkg:c.pkgName||'',followUp:c.followUp||''}])});
+    try{ await CCOL.doc(c.id).update({status:sel.value, updatedAt:now, log:trimLog([...(c.log||[]),{at:now,kind:'status',status:sel.value,pkg:c.pkgName||'',followUp:c.followUp||''}])});
       if(S.clientId===c.id){ S.status=sel.value; save(); document.getElementById('cStatus').value=sel.value; } }
     catch(e){ sel.value=c.status; }
   });
